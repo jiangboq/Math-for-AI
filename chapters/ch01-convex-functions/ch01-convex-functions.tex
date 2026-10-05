@@ -1,0 +1,88 @@
+\chapter{Convex Functions}
+\label{chap:ch01}
+
+% Chapter goal: build intuition for convexity (a bowl with no false
+% bottoms) and show why it is the dividing line between optimization
+% problems that are easy and those that are hard.
+
+\section{Why Convexity Matters for AI}
+\label{sec:ch01-why}
+
+\begin{aibox}
+  Linear regression, logistic regression, and SVMs have convex losses, so
+  gradient descent finds the global minimum. Deep networks do not, and much
+  of modern training practice exists to work around that.
+\end{aibox}
+
+\section{Functions: A Quick Refresher}
+\label{sec:ch01-functions}
+\subsection{Domain, Range, and Graphs}
+\subsection{Functions You Will See Everywhere in AI}
+% linear/affine, quadratic, exp/log, sigmoid, ReLU, softplus, log-sum-exp
+
+\section{Convex Sets}
+\label{sec:ch01-convex-sets}
+\subsection{Line Segments and Convex Combinations}
+\subsection{Examples: Lines, Half-Spaces, Balls, the Probability Simplex}
+
+\section{Definition of a Convex Function}
+\label{sec:ch01-definition}
+
+\begin{definition}[Convex function]
+  \label{def:convex}
+  A function $f\colon \dom f \to \R$, where $\dom f$ is a convex set, is
+  \emph{convex} if for all $x, y \in \dom f$ and all $\theta \in [0,1]$,
+  \begin{equation}
+    f\bigl(\theta x + (1-\theta) y\bigr) \le \theta f(x) + (1-\theta) f(y).
+    \label{eq:convex}
+  \end{equation}
+\end{definition}
+
+\subsection{Geometric Picture: The Chord Lies Above the Graph}
+\subsection{Strict and Strong Convexity}
+\subsection{Concave Functions}
+\subsection{The Epigraph View}
+
+\section{Examples and Non-Examples}
+\label{sec:ch01-examples}
+\subsection{Convex: Affine, Quadratic, Exponential, Norms, Log-Sum-Exp}
+\subsection{Not Convex: Sine, Cubic, Neural Network Losses}
+
+\section{Recognizing Convexity with Derivatives}
+\label{sec:ch01-conditions}
+% Light preview; derivatives are developed fully in Chapter 2.
+\subsection{First-Order Condition: Tangent Lines Lie Below the Graph}
+\subsection{Second-Order Condition: Non-Negative Curvature}
+
+\section{Operations That Preserve Convexity}
+\label{sec:ch01-operations}
+\subsection{Non-Negative Weighted Sums}
+\subsection{Composition with an Affine Map}
+\subsection{Pointwise Maximum (and Why ReLU and Hinge Loss Are Convex)}
+
+\section{Jensen's Inequality}
+\label{sec:ch01-jensen}
+
+\section{Why Convex Problems Are Easy: Local Minima Are Global}
+\label{sec:ch01-local-global}
+
+\section{Convexity in Machine Learning}
+\label{sec:ch01-ml}
+\subsection{Mean Squared Error and Linear Regression}
+\subsection{Cross-Entropy and Logistic Regression}
+\subsection{Hinge Loss and Support Vector Machines}
+\subsection{Regularizers: $L_1$ and $L_2$ Penalties}
+\subsection{Beyond Convexity: The Loss Landscape of Deep Networks}
+
+\section{In Code: Checking and Visualizing Convexity}
+\label{sec:ch01-code}
+% Plot functions with chords, numerically test inequality (1.1), and run
+% gradient descent on a convex vs. a non-convex function.
+
+\section{Summary}
+
+\section{Exercises}
+
+\section{Further Reading}
+Boyd and Vandenberghe~\cite{boyd2004convex} is the standard reference on
+convex functions and convex optimization.

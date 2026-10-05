@@ -1,0 +1,45 @@
+\documentclass[11pt,openany]{book}
+\input{preamble}
+
+\title{Practical Math for AI}
+\author{Jiangbo Qiu}
+\date{\today}
+
+% Uncomment to build only selected chapters, e.g. while drafting:
+% \includeonly{chapters/ch01-convex-functions/ch01-convex-functions}
+
+\begin{document}
+
+\frontmatter
+\maketitle
+\tableofcontents
+\include{frontmatter/preface}
+
+\mainmatter
+
+\part{Functions and Derivatives}
+\include{chapters/ch01-convex-functions/ch01-convex-functions}
+\include{chapters/ch02-derivatives/ch02-derivatives}
+\include{chapters/ch03-partial-derivatives-and-gradients/ch03-partial-derivatives-and-gradients}
+\include{chapters/ch04-chain-rule-and-backpropagation/ch04-chain-rule-and-backpropagation}
+
+\part{Linear Algebra}
+\include{chapters/ch05-vectors-and-matrices/ch05-vectors-and-matrices}
+\include{chapters/ch06-matrix-decompositions/ch06-matrix-decompositions}
+
+\part{Probability and Statistics}
+\include{chapters/ch07-probability-fundamentals/ch07-probability-fundamentals}
+\include{chapters/ch08-probability-distributions/ch08-probability-distributions}
+\include{chapters/ch09-statistics-and-estimation/ch09-statistics-and-estimation}
+\include{chapters/ch10-information-theory/ch10-information-theory}
+
+\part{Optimization and Learning}
+\include{chapters/ch11-optimization/ch11-optimization}
+\include{chapters/ch12-regularization-and-generalization/ch12-regularization-and-generalization}
+\include{chapters/ch13-math-of-transformers/ch13-math-of-transformers}
+
+\backmatter
+\bibliographystyle{plain}
+\bibliography{references}
+
+\end{document}
