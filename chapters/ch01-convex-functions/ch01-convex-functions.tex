@@ -17,8 +17,452 @@
 \section{Functions: A Quick Refresher}
 \label{sec:ch01-functions}
 \subsection{Domain, Range, and Graphs}
+\label{sec:ch01-domain-range}
+
+A \emph{function} is a rule that assigns to each input exactly one output.
+We write
+\[
+  f\colon A \to B
+\]
+to say that $f$ takes inputs from the set $A$ and produces outputs in the
+set $B$. For example, $f\colon \R \to \R$, $f(x) = x^2$ takes any real
+number and returns its square. The phrase ``exactly one'' matters: a rule
+that could return two different values for the same input is not a
+function.
+
+\begin{definition}[Domain, codomain, range]
+  \label{def:domain-range}
+  Let $f\colon A \to B$.
+  \begin{itemize}
+    \item The \emph{domain} of $f$, written $\dom f$, is the set $A$ of
+      allowed inputs.
+    \item The \emph{codomain} of $f$ is the set $B$ in which outputs are
+      declared to live.
+    \item The \emph{range} (or \emph{image}) of $f$ is the set of outputs
+      that actually occur:
+      \[
+        \operatorname{range} f = \{\, f(x) : x \in \dom f \,\} \subseteq B.
+      \]
+  \end{itemize}
+\end{definition}
+
+The codomain is what the function promises; the range is what it delivers.
+For $f(x) = x^2$ on $\R$, the codomain is $\R$ but the range is only
+$[0, \infty)$, because no real number squares to a negative value.
+
+When a function is given by a formula with no domain stated, we take its
+\emph{natural domain}: the largest set of inputs on which the formula makes
+sense. The natural domain of $\log x$ is $(0, \infty)$, that of $\sqrt{x}$
+is $[0, \infty)$, and that of $1/x$ is $\R \setminus \{0\}$.
+\Cref{tab:ch01-domain-range} lists the domain and range of several
+functions that come up repeatedly in this book.
+
+\begin{table}[ht]
+  \centering
+  \caption{Domains and ranges of some common functions.}
+  \label{tab:ch01-domain-range}
+  \begin{tabular}{@{}lll@{}}
+    \toprule
+    Function & Domain & Range \\
+    \midrule
+    $x^2$ & $\R$ & $[0, \infty)$ \\
+    $e^x$ & $\R$ & $(0, \infty)$ \\
+    $\log x$ & $(0, \infty)$ & $\R$ \\
+    $\sigma(x) = 1/(1 + e^{-x})$ (sigmoid) & $\R$ & $(0, 1)$ \\
+    $\tanh x$ & $\R$ & $(-1, 1)$ \\
+    $\max(0, x)$ (ReLU) & $\R$ & $[0, \infty)$ \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+Notice that $e^x$ and $\log x$ swap domain and range. This is no accident:
+each undoes the other, so the outputs of one are exactly the allowed inputs
+of the other.
+
+\begin{aibox}
+  Domains and ranges are design decisions in machine learning. A binary
+  classifier ends in a sigmoid because its range $(0,1)$ is exactly where
+  probabilities live. The cross-entropy loss $-\log p$ is defined only for
+  $p > 0$, so a model that assigns probability $0$ to the correct label
+  produces an infinite loss. This is why frameworks compute the loss from
+  the raw scores (logits) rather than from probabilities.
+\end{aibox}
+
+The last point is easy to see in code. In exact arithmetic the sigmoid
+never reaches $0$ or $1$, but floating-point numbers have limited
+precision, so for large inputs it rounds to the endpoints, and the
+logarithm then receives an input outside its domain:
+
+\begin{lstlisting}
+import numpy as np
+
+def sigmoid(x):
+    return 1 / (1 + np.exp(-x))
+
+sigmoid(np.array([-800.0, 0.0, 40.0]))  # array([0. , 0.5, 1. ])
+np.log(sigmoid(-800.0))                 # -inf
+np.log(-1.0)                            # nan
+\end{lstlisting}
+
+\paragraph{Functions of several variables.}
+Inputs need not be single numbers. A function $f\colon \R^n \to \R$ takes a
+vector $\vect{x} = (x_1, \dots, x_n)$ and returns a number, for example
+\[
+  f(\vect{x}) = x_1^2 + x_2^2 + \dots + x_n^2.
+\]
+The most important function in machine learning has this form: the
+\emph{loss} $L\colon \R^d \to \R$, which maps a vector of model parameters
+$\vect{\theta}$ to a single number measuring how badly the model fits the
+data. Training a model means searching the domain $\R^d$ for a point where
+$L$ is small, and for a large neural network $d$ is in the billions.
+
+Domains of vector functions can be restricted too. A probability
+distribution over $n$ outcomes is a vector in the \emph{probability simplex}
+\[
+  \Delta_n = \Bigl\{\, \vect{p} \in \R^n : p_i \ge 0 \text{ for all } i,\
+  \textstyle\sum_{i=1}^n p_i = 1 \,\Bigr\},
+\]
+so functions of distributions, such as entropy, have $\Delta_n$ as their
+domain. Likewise, the softmax function, which turns a vector of logits into
+probabilities, has domain $\R^n$ and range inside $\Delta_n$.
+
+\paragraph{Graphs.}
+The \emph{graph} of a function collects every input together with its
+output:
+\[
+  \operatorname{graph} f = \{\, (x, f(x)) : x \in \dom f \,\}.
+\]
+For $f\colon \R \to \R$, the graph is a curve in the plane. The domain is
+the part of the horizontal axis the curve sits over, and the range is the
+part of the vertical axis it covers. Because each input has exactly one
+output, every vertical line meets the graph at most once.
+\Cref{fig:ch01-graphs} shows three examples.
+
+\begin{figure}[ht]
+  \centering
+  \begin{tikzpicture}
+    \begin{axis}[
+      name=sig, width=0.36\textwidth, height=0.32\textwidth,
+      axis lines=middle, xmin=-6, xmax=6, ymin=-0.3, ymax=1.4,
+      axis on top, xtick={-4,4}, ytick={1},
+      xlabel={$x$}, ylabel={$\sigma(x)$},
+      x label style={anchor=west}, y label style={anchor=south},
+      title style={yshift=2ex}, title={(a) sigmoid},
+    ]
+      \fill[blue!10] (axis cs:-6,0) rectangle (axis cs:6,1);
+      \addplot[dashed, gray, domain=-6:6] {1};
+      \addplot[very thick, blue!60!black, domain=-6:6, samples=100]
+        {1/(1+exp(-x))};
+    \end{axis}
+    \begin{axis}[
+      name=log, at={(sig.east)}, anchor=west, xshift=0.6cm,
+      width=0.36\textwidth, height=0.32\textwidth,
+      axis lines=middle, xmin=-1, xmax=4, ymin=-3, ymax=2,
+      axis on top, xtick={1,2,3}, ytick={-2,2},
+      xlabel={$x$}, ylabel={$\log x$},
+      x label style={anchor=west}, y label style={anchor=south},
+      title style={yshift=2ex}, title={(b) logarithm},
+    ]
+      \fill[red!10] (axis cs:0,-3) rectangle (axis cs:4,2);
+      \addplot[very thick, red!60!black, domain=0.05:4, samples=100]
+        {ln(x)};
+    \end{axis}
+    \begin{axis}[
+      at={(log.east)}, anchor=west, xshift=0.6cm,
+      width=0.36\textwidth, height=0.32\textwidth,
+      view={35}{30}, xlabel={$x_1$}, ylabel={$x_2$}, zlabel={$f$},
+      xtick=\empty, ytick=\empty, ztick=\empty,
+      title style={yshift=2ex}, title={(c) $x_1^2 + x_2^2$},
+    ]
+      \addplot3[surf, shader=interp, colormap/viridis,
+        domain=-2:2, y domain=-2:2, samples=25] {x^2 + y^2};
+    \end{axis}
+  \end{tikzpicture}
+  \caption{Graphs of three functions. (a) The sigmoid is defined on all of
+    $\R$, but its graph stays inside the shaded band $0 < y < 1$: its range
+    is $(0,1)$. (b) The logarithm's graph sits only over the shaded region
+    $x > 0$: its domain is $(0, \infty)$. (c) The graph of a function of two
+    variables is a surface in $\R^3$; this one is a bowl.}
+  \label{fig:ch01-graphs}
+\end{figure}
+
+For $f\colon \R^2 \to \R$, the graph is a surface in three dimensions, like
+the bowl in \Cref{fig:ch01-graphs}(c). For $f\colon \R^n \to \R$ with
+$n > 2$, the graph lives in $\R^{n+1}$ and can no longer be drawn, but the
+picture still guides intuition. When people speak of the \emph{loss
+landscape} of a neural network, they mean the graph of its loss function:
+a surface over parameter space whose valleys are good models. Much of this
+chapter is about which shapes of landscape make the lowest valley easy to
+find.
+
+\begin{remark}
+  The definition of convexity (\Cref{def:convex}) places a condition on the
+  domain itself: $\dom f$ must be a convex set, a notion we make precise in
+  \Cref{sec:ch01-convex-sets}. Domains, in other words, are not
+  bookkeeping; they are part of what makes a function convex or not.
+\end{remark}
+
 \subsection{Functions You Will See Everywhere in AI}
-% linear/affine, quadratic, exp/log, sigmoid, ReLU, softplus, log-sum-exp
+\label{sec:ch01-ai-functions}
+
+A neural network is assembled from a small number of building blocks.
+Most of the work is done by linear maps, which multiply inputs by weights
+and add them up. Between those maps sit a few fixed nonlinear functions
+that turn raw scores into decisions, probabilities, or features. This
+section introduces four of them: the sign function, the sigmoid, the
+rectified linear unit (ReLU), and the softmax. The first three take one
+number and return one number, and \Cref{fig:ch01-activations} shows them
+side by side. The softmax takes a whole vector of scores.
+
+\begin{figure}[ht]
+  \centering
+  \begin{tikzpicture}
+    \pgfplotsset{
+      act/.style={
+        width=0.36\textwidth, height=0.32\textwidth,
+        axis lines=middle, axis on top,
+        x label style={anchor=west}, y label style={anchor=south},
+        title style={yshift=2ex},
+        yticklabel style={fill=white, inner sep=1pt},
+      },
+    }
+    \begin{axis}[
+      act, name=sgn, xmin=-3, xmax=3, ymin=-1.5, ymax=1.5,
+      xtick={-2,2}, ytick={-1,1}, xlabel={$x$}, ylabel={$\operatorname{sign} x$},
+      title={(a) sign},
+    ]
+      \addplot[very thick, blue!60!black, domain=-3:0] {-1};
+      \addplot[very thick, blue!60!black, domain=0:3] {1};
+      \draw[blue!60!black, fill=white] (axis cs:0,-1) circle (2pt);
+      \draw[blue!60!black, fill=white] (axis cs:0,1) circle (2pt);
+      \fill[blue!60!black] (axis cs:0,0) circle (2pt);
+    \end{axis}
+    \begin{axis}[
+      act, name=sig, at={(sgn.east)}, anchor=west, xshift=0.6cm,
+      xmin=-6, xmax=6, ymin=-0.3, ymax=1.4,
+      xtick={-4,4}, ytick={0.5,1}, xlabel={$x$}, ylabel={$\sigma(x)$},
+      title={(b) sigmoid},
+    ]
+      \addplot[dashed, gray, domain=-6:6] {1};
+      \addplot[thick, dashed, orange!80!black, domain=-6:6, samples=200]
+        {1/(1+exp(-4*x))};
+      \addplot[very thick, blue!60!black, domain=-6:6, samples=100]
+        {1/(1+exp(-x))};
+    \end{axis}
+    \begin{axis}[
+      act, at={(sig.east)}, anchor=west, xshift=0.6cm,
+      xmin=-3, xmax=3, ymin=-1, ymax=3.2,
+      xtick={-2,2}, ytick={1,2}, xlabel={$x$}, ylabel={$\operatorname{ReLU}(x)$},
+      title={(c) ReLU},
+    ]
+      \addplot[very thick, blue!60!black, domain=-3:3, samples=61]
+        {max(0,x)};
+    \end{axis}
+  \end{tikzpicture}
+  \caption{Three scalar functions used throughout AI. (a) The sign function
+    jumps from $-1$ to $1$ at the origin; the filled dot marks
+    $\operatorname{sign} 0 = 0$. (b) The sigmoid (solid) is a smooth version
+    of a step. The dashed curve $\sigma(4x)$ shows that scaling the input
+    makes it steeper and more step-like. (c) ReLU is zero for negative
+    inputs and the identity for positive ones.}
+  \label{fig:ch01-activations}
+\end{figure}
+
+\paragraph{The sign function.}
+The simplest way to turn a score into a decision is to look at its sign:
+\[
+  \operatorname{sign} x =
+  \begin{cases}
+    1 & x > 0, \\
+    0 & x = 0, \\
+    -1 & x < 0.
+  \end{cases}
+\]
+Its domain is $\R$ and its range is the three-point set $\{-1, 0, 1\}$.
+The \emph{perceptron}, one of the earliest learning algorithms, is a sign
+function applied to a weighted sum of the inputs: given a feature vector
+$\vect{x}$, weights $\vect{w}$, and an offset $b$, it predicts the class
+\[
+  \hat{y} = \operatorname{sign}(\vect{w}^\top \vect{x} + b).
+\]
+The sign function also appears inside optimizers. The Lion optimizer, for
+example, moves each parameter by a fixed step size in the direction given
+by the sign of its update.
+
+The graph in \Cref{fig:ch01-activations}(a) shows why the sign function is
+rarely used inside the layers of a trained network. It is flat everywhere
+except at $0$, where it jumps. A small change to the weights almost never
+changes the output, so the function gives no signal about which direction
+would improve the model. Learning by gradient descent, the subject of
+\Cref{chap:ch11}, needs functions whose outputs respond smoothly to their
+inputs. The next function is the standard way to get one.
+
+\paragraph{The sigmoid.}
+The \emph{sigmoid}, also called the \emph{logistic function}, is
+\[
+  \sigma(x) = \frac{1}{1 + e^{-x}}.
+\]
+Its domain is $\R$ and its range is $(0, 1)$. Large positive inputs give
+outputs close to $1$, large negative inputs give outputs close to $0$, and
+$\sigma(0) = \tfrac12$. The graph in \Cref{fig:ch01-activations}(b) is an
+S-shaped curve that looks like a sign function with the jump smoothed out.
+The two are closely related:
+\[
+  2\sigma(x) - 1 = \tanh\!\left(\frac{x}{2}\right),
+\]
+and as $k \to \infty$, the steeper sigmoid $\sigma(kx)$ approaches a step
+from $0$ to $1$. Another useful property follows directly from the
+definition:
+\[
+  \sigma(-x) = 1 - \sigma(x).
+\]
+
+Because its outputs lie strictly between $0$ and $1$, the sigmoid turns any
+real-valued score into a probability. \emph{Logistic regression} models the
+probability that an example belongs to the positive class as
+\[
+  P(y = 1 \mid \vect{x}) = \sigma(\vect{w}^\top \vect{x} + b),
+\]
+and by the symmetry above, $P(y = 0 \mid \vect{x}) = \sigma(-(\vect{w}^\top
+\vect{x} + b))$. Inverting the sigmoid gives the \emph{logit} function
+$\sigma^{-1}(p) = \log\bigl(p / (1 - p)\bigr)$, which maps a probability
+back to a score. This is why the raw scores a model produces before any
+sigmoid or softmax are called \emph{logits}.
+
+\paragraph{The rectified linear unit.}
+The \emph{ReLU} keeps positive inputs and replaces negative ones with zero:
+\[
+  \operatorname{ReLU}(x) = \max(0, x).
+\]
+Its domain is $\R$ and its range is $[0, \infty)$. The graph in
+\Cref{fig:ch01-activations}(c) consists of two straight pieces that meet at
+a corner at the origin. ReLU is the default activation function in the
+hidden layers of deep networks, for two reasons. It is cheap to compute,
+and for positive inputs its slope is always $1$, whereas the sigmoid
+flattens out at both ends. In a deep network, signals must pass through
+many layers, and flat regions in each layer combine to stop learning.
+ReLU's flat region on the negative side has the same effect on a single
+unit: a unit whose input is negative for every training example outputs
+$0$ for all of them and stops learning, a failure known as a \emph{dead
+neuron}. Smooth variants such as GELU, used in most transformers, bend the
+corner slightly to reduce this problem.
+
+ReLU is also our first example of a convex function that is not smooth.
+We will see in \Cref{sec:ch01-operations} that it is convex because it is
+the maximum of two linear functions, $0$ and $x$.
+
+\paragraph{The softmax.}
+A classifier with $n$ classes produces a vector of $n$ logits
+$\vect{z} = (z_1, \dots, z_n)$, one score per class, and needs to turn them
+into a probability distribution. The \emph{softmax} does this:
+\[
+  \operatorname{softmax}(\vect{z})_i = \frac{e^{z_i}}{\sum_{j=1}^n e^{z_j}},
+  \qquad i = 1, \dots, n.
+\]
+Exponentiating makes every entry positive, and dividing by the sum makes
+the entries add up to $1$. The softmax is therefore a function from $\R^n$
+into the probability simplex $\Delta_n$ of \Cref{sec:ch01-domain-range}.
+Its outputs are never exactly $0$, so its range is the part of $\Delta_n$
+where every $p_i > 0$. Larger logits get larger probabilities, and the
+ordering of the classes is preserved.
+
+Three properties of the softmax come up repeatedly.
+\begin{itemize}
+  \item \emph{Shift invariance.} Adding the same constant $c$ to every
+    logit does not change the output, because the factor $e^c$ cancels
+    between numerator and denominator:
+    $\operatorname{softmax}(\vect{z} + c\vect{1}) =
+    \operatorname{softmax}(\vect{z})$. Only differences between logits
+    matter.
+  \item \emph{It generalizes the sigmoid.} With two classes,
+    \[
+      \operatorname{softmax}(z_1, z_2)_1 = \frac{e^{z_1}}{e^{z_1} + e^{z_2}}
+      = \frac{1}{1 + e^{-(z_1 - z_2)}} = \sigma(z_1 - z_2).
+    \]
+  \item \emph{Temperature.} Dividing the logits by a temperature $T > 0$
+    before applying the softmax controls how peaked the result is. As
+    $T \to 0$, the output approaches a one-hot vector with all its mass on
+    the largest logit, the same answer as $\argmax$. As $T \to \infty$, it
+    approaches the uniform distribution. \Cref{fig:ch01-softmax} shows an
+    example. The name ``softmax'' comes from this behavior: it is a soft,
+    smooth version of picking the maximum.
+\end{itemize}
+
+\begin{figure}[ht]
+  \centering
+  \begin{tikzpicture}
+    \begin{axis}[
+      ybar, bar width=9pt, width=0.75\textwidth, height=0.3\textwidth,
+      ymin=0, ymax=1, enlarge x limits=0.18,
+      symbolic x coords={1,2,3,4}, xtick=data,
+      xticklabels={{$z_1 = 2$}, {$z_2 = 1$}, {$z_3 = 0.5$}, {$z_4 = -1$}},
+      ylabel={probability}, ytick={0,0.5,1},
+      legend style={at={(0.98,0.95)}, anchor=north east, draw=none},
+      legend cell align=left,
+    ]
+      \addplot[fill=blue!60!black, draw=none]
+        coordinates {(1,0.842) (2,0.114) (3,0.042) (4,0.002)};
+      \addplot[fill=blue!35, draw=none]
+        coordinates {(1,0.609) (2,0.224) (3,0.136) (4,0.030)};
+      \addplot[fill=blue!12, draw=blue!40]
+        coordinates {(1,0.322) (2,0.263) (3,0.238) (4,0.177)};
+      \legend{$T = 0.5$, $T = 1$, $T = 5$}
+    \end{axis}
+  \end{tikzpicture}
+  \caption{The softmax of the logits $\vect{z} = (2, 1, 0.5, -1)$ at three
+    temperatures. A low temperature concentrates the probability on the
+    largest logit; a high temperature spreads it out.}
+  \label{fig:ch01-softmax}
+\end{figure}
+
+\begin{aibox}
+  The softmax appears in three central places. It is the final layer of
+  almost every classifier, turning logits into class probabilities. It is
+  the heart of the attention mechanism in transformers
+  (\Cref{chap:ch13}), where it turns similarity scores into weights that
+  sum to one. And when a language model generates text, it samples each
+  next token from a softmax over its vocabulary; the ``temperature''
+  setting in a chatbot is exactly the $T$ above.
+\end{aibox}
+
+The shift invariance has a practical use. Computing $e^{z_i}$ directly
+overflows for logits as small as $1000$, but subtracting the largest logit
+first leaves the answer unchanged and keeps every exponent at most $0$.
+Every deep learning library computes the softmax this way:
+
+\begin{lstlisting}
+import numpy as np
+
+def softmax_naive(z):
+    e = np.exp(z)
+    return e / e.sum()
+
+def softmax(z):
+    e = np.exp(z - z.max())   # shift so the largest logit is 0
+    return e / e.sum()
+
+z = np.array([1000.0, 999.0, 998.0])
+softmax_naive(z)   # array([nan, nan, nan])  (exp overflows to inf)
+softmax(z)         # about [0.665, 0.245, 0.090]
+\end{lstlisting}
+
+\Cref{tab:ch01-ai-functions} summarizes the four functions.
+
+\begin{table}[ht]
+  \centering
+  \caption{Four functions used throughout AI.}
+  \label{tab:ch01-ai-functions}
+  \begin{tabular}{@{}llll@{}}
+    \toprule
+    Function & Domain & Range & Typical use \\
+    \midrule
+    $\operatorname{sign} x$ & $\R$ & $\{-1, 0, 1\}$ & perceptron, sign-based optimizers \\
+    $\sigma(x)$ & $\R$ & $(0, 1)$ & binary classification, gates \\
+    $\operatorname{ReLU}(x)$ & $\R$ & $[0, \infty)$ & hidden-layer activation \\
+    $\operatorname{softmax}(\vect{z})$ & $\R^n$ & $\{\vect{p} \in \Delta_n : p_i > 0\}$ & multiclass output, attention \\
+    \bottomrule
+  \end{tabular}
+\end{table}
 
 \section{Convex Sets}
 \label{sec:ch01-convex-sets}
