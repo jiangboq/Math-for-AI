@@ -24,14 +24,13 @@ make clean  # remove build artifacts
 
 **Part III: Probability and Statistics**
 5. Probability Fundamentals
-6. Common Probability Distributions
-7. Statistics and Estimation: MLE and MAP
-8. Information Theory: Entropy, Cross-Entropy, and KL Divergence
+6. Statistics and Estimation: MLE and MAP
+7. Information Theory: Entropy, Cross-Entropy, and KL Divergence
 
 **Part IV: Optimization and Learning**
-9. Optimization: Gradient Descent to Adam
-10. Regularization and Generalization
-11. Putting It Together: The Math of Transformers
+8. Optimization: Gradient Descent to Adam
+9. Regularization and Generalization
+10. Putting It Together: The Math of Transformers
 
 ## Layout
 

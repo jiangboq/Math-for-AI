@@ -293,7 +293,7 @@ rarely used inside the layers of a trained network. It is flat everywhere
 except at $0$, where it jumps. A small change to the weights almost never
 changes the output, so the function gives no signal about which direction
 would improve the model. Learning by gradient descent, the subject of
-\Cref{chap:ch09}, needs functions whose outputs respond smoothly to their
+\Cref{chap:ch08}, needs functions whose outputs respond smoothly to their
 inputs. The next function is the standard way to get one.
 
 \paragraph{The sigmoid.}
@@ -418,7 +418,7 @@ Three properties of the softmax come up repeatedly.
   The softmax appears in three central places. It is the final layer of
   almost every classifier, turning logits into class probabilities. It is
   the heart of the attention mechanism in transformers
-  (\Cref{chap:ch11}), where it turns similarity scores into weights that
+  (\Cref{chap:ch10}), where it turns similarity scores into weights that
   sum to one. And when a language model generates text, it samples each
   next token from a softmax over its vocabulary; the ``temperature''
   setting in a chatbot is exactly the $T$ above.
@@ -761,7 +761,7 @@ implies the one before it.
   loss makes the total $\lambda$-strongly convex, because the penalty
   contributes its own gap of $\tfrac{\lambda}{2} \theta (1 - \theta)
   \|\vect{x} - \vect{y}\|^2$. This is why ridge regression always has a
-  single best solution, and, as \Cref{chap:ch09} shows, why gradient
+  single best solution, and, as \Cref{chap:ch08} shows, why gradient
   descent converges quickly on it.
 \end{aibox}
 
@@ -1071,7 +1071,7 @@ runs end in the worse valley.
   training runs with different random seeds end at different parameters,
   and nothing guarantees either is globally optimal. Remarkably, large
   networks still tend to reach local minima that are almost as good as
-  the best, a phenomenon we return to in \Cref{chap:ch09,chap:ch10}.
+  the best, a phenomenon we return to in \Cref{chap:ch08,chap:ch09}.
 \end{aibox}
 
 \section{Summary}

@@ -1,4 +1,1156 @@
 \chapter{Probability Fundamentals}
 \label{chap:ch05}
 
-\textit{Coming soon.}
+% Chapter goal: give a precise language for uncertainty (random
+% variables, their distributions, and how they combine) so that model
+% outputs, losses, and sampling can be read as probability statements.
+
+Every model so far has been a deterministic function: the same input
+gives the same output. Yet most of what a model deals with is uncertain.
+The label of an image is not known until someone checks it, the next word
+of a sentence could be any of thousands, and the training examples
+themselves are a random draw from a much larger world. A classifier does
+not really answer ``cat''; its softmax answers ``cat with probability
+$0.61$, dog with probability $0.22$, \dots''. This chapter builds the
+language for statements like that. It starts with the basic object,
+the random variable, and the two ways a random variable can spread its
+probability: over separate values or over a continuum.
+
+\section{Discrete and Continuous Random Variables}
+\label{sec:ch05-rv}
+
+\subsection{Outcomes, Events, and Random Variables}
+\label{sec:ch05-rv-def}
+
+Probability starts with an experiment whose result we cannot predict:
+rolling a die, drawing a training example at random, sampling the next
+token from a language model. The set of all possible results is the
+\emph{sample space}, written $\Omega$. For one roll of a die,
+$\Omega = \{1, 2, 3, 4, 5, 6\}$. For two rolls, it is the set of the
+$36$ ordered pairs $(1, 1), (1, 2), \dots, (6, 6)$.
+
+An \emph{event} is a set of outcomes, such as ``the first die shows an
+even number'' or ``the two dice add up to $7$''. A \emph{probability}
+$P$ assigns each event a number between $0$ and $1$, subject to three
+rules:
+\begin{itemize}
+  \item $P(A) \ge 0$ for every event $A$;
+  \item $P(\Omega) = 1$: something happens;
+  \item if events $A$ and $B$ cannot both happen, then
+    $P(A \text{ or } B) = P(A) + P(B)$, and the same holds for any
+    sequence of events no two of which can happen together.
+\end{itemize}
+Everything else follows from these. For fair dice, all $36$ pairs are
+equally likely, so each has probability $1/36$, and the probability of
+an event is the number of pairs in it divided by $36$. The six pairs
+$(1, 6), (2, 5), \dots, (6, 1)$ add up to $7$, so that event has
+probability $6/36 = 1/6$.
+
+Outcomes themselves are often awkward to compute with. An outcome might
+be a pair of dice, a photograph, or a sentence. What we usually care
+about is a \emph{number} that the outcome determines: the sum of the
+dice, the pixel intensity at one location, the length of the sentence.
+
+\begin{definition}[Random variable]
+  \label{def:random-variable}
+  A \emph{random variable} is a function $X\colon \Omega \to \R$ that
+  assigns a real number $X(\omega)$ to each outcome $\omega$ of an
+  experiment.
+\end{definition}
+
+Despite its name, a random variable is neither random nor a variable: it
+is an ordinary function, in the sense of \Cref{sec:ch01-domain-range},
+whose domain is the sample space. The randomness lives in which outcome
+occurs. Once the experiment is run and $\omega$ is known, the value
+$X(\omega)$ is fixed. Before that, we can only say how likely each value
+is.
+
+We write random variables with capital letters, $X$, $Y$, $S$, and the
+values they take with lowercase ones, $x$, $y$, $s$. Statements about
+$X$ are shorthand for events. For the sum of two dice $S$,
+\[
+  \{S = 7\} = \{\omega \in \Omega : S(\omega) = 7\}
+  = \{(1, 6), (2, 5), (3, 4), (4, 3), (5, 2), (6, 1)\},
+\]
+so $P(S = 7) = 1/6$. Likewise $\{S \le 3\}$ is the event
+$\{(1, 1), (1, 2), (2, 1)\}$, with probability $3/36$.
+
+The full description of how a random variable spreads its probability
+over the real line is its \emph{distribution}. Once we have it, we can
+usually forget the sample space altogether and work with the
+distribution directly. How to write a distribution down depends on what
+values the random variable can take, and there are two main cases:
+\begin{itemize}
+  \item A \emph{discrete} random variable takes values in a finite or
+    countable set, such as $\{0, 1\}$, $\{2, 3, \dots, 12\}$, or the
+    vocabulary indices $\{0, 1, \dots, V - 1\}$ of a language model. We
+    can list each value with its probability.
+  \item A \emph{continuous} random variable takes values in a continuum,
+    such as an interval or all of $\R$: a waiting time, a temperature, a
+    weight in a freshly initialized network. Every individual value has
+    probability $0$, and probability is described by a \emph{density}
+    instead.
+\end{itemize}
+
+\subsection{Discrete Random Variables}
+\label{sec:ch05-discrete}
+
+A discrete random variable is described by listing its possible values
+and how likely each one is.
+
+\begin{definition}[Probability mass function]
+  \label{def:pmf}
+  The \emph{probability mass function} (PMF) of a discrete random
+  variable $X$ is
+  \[
+    p_X(x) = P(X = x).
+  \]
+  It satisfies $p_X(x) \ge 0$ for every $x$, and
+  \[
+    \sum_x p_X(x) = 1 ,
+  \]
+  where the sum runs over all values that $X$ can take.
+\end{definition}
+
+The two conditions come straight from the rules of probability. The
+events $\{X = x\}$ for different $x$ cannot happen together, and between
+them they cover every outcome, so their probabilities add up to
+$P(\Omega) = 1$. The probability of any set $A$ of values is then a sum,
+\[
+  P(X \in A) = \sum_{x \in A} p_X(x) .
+\]
+
+\begin{example}
+  \label{ex:ch05-dice}
+  Let $S$ be the sum of two fair dice. Counting the pairs that give each
+  sum, as we did for $S = 7$, gives
+  \[
+    p_S(s) = \frac{6 - |s - 7|}{36}, \qquad s = 2, 3, \dots, 12 .
+  \]
+  The values rise from $p_S(2) = 1/36$ to $p_S(7) = 6/36$ and fall back
+  to $p_S(12) = 1/36$, and they add up to $(1 + 2 + 3 + 4 + 5 + 6 + 5 +
+  4 + 3 + 2 + 1)/36 = 1$. The probability that the sum is at most $4$ is
+  $p_S(2) + p_S(3) + p_S(4) = 6/36 = 1/6$.
+\end{example}
+
+\Cref{fig:ch05-dice-pmf} draws this PMF as a bar chart. The height of
+each bar is a probability, and the heights add up to $1$. The PMF is the
+whole distribution: it answers every question about $S$ alone.
+
+\begin{figure}[ht]
+  \centering
+  \begin{tikzpicture}
+    \begin{axis}[
+      ybar, bar width=12pt, bar shift=0pt, width=0.75\textwidth, height=0.32\textwidth,
+      ymin=0, ymax=0.2, xmin=1.3, xmax=12.7,
+      xtick={2,...,12}, xlabel={$s$}, ylabel={$p_S(s)$},
+      ytick={0, 0.05, 0.1, 0.15}, yticklabel style={
+        /pgf/number format/fixed, /pgf/number format/precision=2},
+      axis lines*=left,
+    ]
+      \addplot[fill=blue!35, draw=blue!60!black] coordinates {
+        (2,0.0278) (3,0.0556) (4,0.0833) (5,0.1111) (6,0.1389)
+        (7,0.1667) (8,0.1389) (9,0.1111) (10,0.0833) (11,0.0556)
+        (12,0.0278)};
+      \addplot[fill=accent!60, draw=accent] coordinates {
+        (2,0.0278) (3,0.0556) (4,0.0833)};
+    \end{axis}
+  \end{tikzpicture}
+  \caption{The probability mass function of the sum $S$ of two fair
+    dice. Each bar is the probability of one value, and the bars add up
+    to $1$. The event $S \le 4$ (red) has probability equal to the total
+    height of its bars, $6/36$.}
+  \label{fig:ch05-dice-pmf}
+\end{figure}
+
+Two simple discrete distributions appear constantly in machine learning.
+
+\paragraph{Bernoulli.}
+A random variable that takes the value $1$ with probability $\theta$ and
+$0$ with probability $1 - \theta$ is a \emph{Bernoulli} random variable.
+Its PMF is $p(1) = \theta$, $p(0) = 1 - \theta$, which can be written in
+one line as
+\[
+  p(x) = \theta^x (1 - \theta)^{1 - x}, \qquad x \in \{0, 1\}.
+\]
+It models any yes-or-no outcome: a coin flip, whether an email is spam,
+whether a neuron is kept by dropout. Logistic regression
+(\Cref{sec:ch01-ai-functions}) predicts the parameter $\theta =
+\sigma(\vect{w}^\top\vect{x} + b)$ of a Bernoulli random variable, the
+label.
+
+\paragraph{Categorical.}
+A random variable that takes one of $K$ values $1, 2, \dots, K$, with
+probabilities $p_1, \dots, p_K$, is \emph{categorical}. The PMF is the
+vector $\vect{p} = (p_1, \dots, p_K)$, and the two conditions of
+\Cref{def:pmf} say exactly that $\vect{p}$ lies in the probability
+simplex $\Delta_K$ of \Cref{sec:ch01-domain-range}. A fair die is
+categorical with $K = 6$ and every $p_k = 1/6$. A $K$-class classifier
+outputs a categorical distribution over the classes, and a language
+model outputs one over its vocabulary at every step. The softmax of
+\Cref{fig:ch01-softmax} is precisely a machine for turning arbitrary
+scores into a valid PMF.
+
+\subsection{Continuous Random Variables}
+\label{sec:ch05-continuous}
+
+Now suppose $X$ is a number chosen uniformly at random from the interval
+$[0, 2]$, for example by a random number generator. What is $P(X = 1)$?
+There are infinitely many values in $[0, 2]$, all equally likely. If each
+had the same positive probability $c$, then any $n$ of them together
+would have probability $nc$, which exceeds $1$ once $n > 1/c$. So
+$P(X = x) = 0$ for every single $x$, and a PMF tells us nothing.
+
+Intervals, on the other hand, have sensible probabilities. Since $X$ is
+uniform, the chance of landing in a subinterval is proportional to its
+length: $P(0.5 \le X \le 1) = 0.5/2 = 1/4$, and in general
+$P(a \le X \le b) = (b - a)/2$ for $0 \le a \le b \le 2$. We can write
+this as an area under the constant function $f(x) = 1/2$ on $[0, 2]$:
+\[
+  P(a \le X \le b) = \int_a^b \tfrac12 \, dx = \frac{b - a}{2} .
+\]
+For continuous random variables, probability is area under a curve.
+
+\begin{definition}[Probability density function]
+  \label{def:pdf}
+  A random variable $X$ is \emph{continuous} if there is a function
+  $f_X\colon \R \to \R$, its \emph{probability density function} (PDF),
+  such that
+  \[
+    P(a \le X \le b) = \int_a^b f_X(x)\, dx
+  \]
+  for all $a \le b$. A density satisfies $f_X(x) \ge 0$ for every $x$,
+  and
+  \[
+    \int_{-\infty}^{\infty} f_X(x)\, dx = 1 .
+  \]
+\end{definition}
+
+The two conditions mirror those of a PMF, with the sum replaced by an
+integral. Because a single point has no width, $P(X = a) =
+\int_a^a f_X(x)\,dx = 0$, and it makes no difference whether the ends of
+an interval are included: $P(a \le X \le b) = P(a < X < b)$.
+
+The value $f_X(x)$ is \emph{not} a probability. It is a probability per
+unit length. For a small width $\Delta x$,
+\[
+  P(x \le X \le x + \Delta x) \approx f_X(x)\, \Delta x ,
+\]
+so a high density means values near $x$ are likely, compared with
+values near places where the density is low. Because it is a rate, a
+density can be larger than $1$; only its total area is limited.
+
+\begin{example}
+  \label{ex:ch05-exponential}
+  The time $T$ until the next request reaches a server, measured in
+  seconds, is often modeled by the \emph{exponential} density with rate
+  $\lambda > 0$,
+  \[
+    f_T(t) =
+    \begin{cases}
+      \lambda e^{-\lambda t} & t \ge 0, \\
+      0 & t < 0 .
+    \end{cases}
+  \]
+  Take $\lambda = 2$, so requests arrive twice per second on average.
+  The total area is $\int_0^\infty 2e^{-2t}\,dt = \bigl[-e^{-2t}
+  \bigr]_0^\infty = 1$, as required. The probability of waiting between
+  half a second and one second is
+  \[
+    P(0.5 \le T \le 1) = \int_{0.5}^{1} 2e^{-2t}\, dt
+    = e^{-1} - e^{-2} \approx 0.233 .
+  \]
+  At $t = 0$ the density is $f_T(0) = 2$, larger than $1$, yet nothing
+  is wrong: the interval $[0, 0.01]$ has probability about $2 \times 0.01
+  = 0.02$.
+\end{example}
+
+\Cref{fig:ch05-pdf} shows both densities. The probability of an
+interval is the shaded area above it, and the total area under each
+curve is $1$.
+
+\begin{figure}[ht]
+  \centering
+  \begin{tikzpicture}
+    \begin{axis}[
+      name=unif, width=0.47\textwidth, height=0.36\textwidth,
+      xmin=-0.5, xmax=2.5, ymin=0, ymax=2.2,
+      xtick={0, 0.5, 1, 2}, ytick={0, 0.5, 1, 2},
+      xlabel={$x$}, ylabel={$f_X(x)$}, axis lines*=left,
+      title={\small uniform on $[0, 2]$},
+    ]
+      \addplot[fill=accent!40, draw=none] coordinates
+        {(0.5,0) (0.5,0.5) (1,0.5) (1,0)} -- cycle;
+      \addplot[very thick, blue!60!black] coordinates
+        {(-0.5,0) (0,0)};
+      \addplot[very thick, blue!60!black] coordinates
+        {(0,0.5) (2,0.5)};
+      \addplot[very thick, blue!60!black] coordinates
+        {(2,0) (2.5,0)};
+      \node[font=\small] at (axis cs:0.75,0.8) {$\tfrac14$};
+    \end{axis}
+    \begin{axis}[
+      at={(unif.east)}, anchor=west, xshift=0.07\textwidth,
+      width=0.47\textwidth, height=0.36\textwidth,
+      xmin=-0.5, xmax=2.5, ymin=0, ymax=2.2,
+      xtick={0, 0.5, 1, 2}, ytick={0, 0.5, 1, 2},
+      xlabel={$t$}, ylabel={$f_T(t)$}, axis lines*=left,
+      title={\small exponential, $\lambda = 2$},
+    ]
+      \addplot[fill=accent!40, draw=none, domain=0.5:1, samples=40]
+        {2*exp(-2*x)} \closedcycle;
+      \addplot[very thick, blue!60!black] coordinates
+        {(-0.5,0) (0,0)};
+      \addplot[very thick, blue!60!black, domain=0:2.5, samples=100]
+        {2*exp(-2*x)};
+      \node[font=\small] at (axis cs:1.15,0.65) {$0.233$};
+    \end{axis}
+  \end{tikzpicture}
+  \caption{Two probability density functions. Left: the uniform density
+    on $[0, 2]$, with $P(0.5 \le X \le 1) = 1/4$ shaded. Right: the
+    exponential density with rate $2$, with $P(0.5 \le T \le 1) \approx
+    0.233$ shaded. Probabilities are areas, and the exponential density
+    starts at $2$, above $1$.}
+  \label{fig:ch05-pdf}
+\end{figure}
+
+\begin{note}
+  This book follows the common convention in machine learning of
+  writing $p(x)$ for both a PMF and a PDF when the context makes clear
+  which is meant. The rules are the same with sums and integrals
+  exchanged: a PMF sums to $1$ and gives probabilities directly; a PDF
+  integrates to $1$ and gives probabilities only through areas.
+\end{note}
+
+\subsection{The Cumulative Distribution Function}
+\label{sec:ch05-cdf}
+
+PMFs and PDFs are different kinds of objects, one a list of
+probabilities and the other a rate. A single function describes both
+kinds of random variable.
+
+\begin{definition}[Cumulative distribution function]
+  \label{def:cdf}
+  The \emph{cumulative distribution function} (CDF) of a random variable
+  $X$ is
+  \[
+    F_X(x) = P(X \le x), \qquad x \in \R .
+  \]
+\end{definition}
+
+The CDF accumulates probability from the left. For a discrete random
+variable it adds up the PMF, $F_X(x) = \sum_{x' \le x} p_X(x')$, and for
+a continuous one it integrates the density,
+\[
+  F_X(x) = \int_{-\infty}^{x} f_X(t)\, dt .
+\]
+For the sum of two dice, $F_S(4) = 6/36$, the red bars of
+\Cref{fig:ch05-dice-pmf}. For the exponential waiting time,
+$F_T(t) = \int_0^t 2e^{-2u}\,du = 1 - e^{-2t}$ for $t \ge 0$.
+
+Every CDF has the same three properties, whatever the kind of random
+variable:
+\begin{itemize}
+  \item it is nondecreasing, because moving $x$ to the right can only add
+    outcomes to the event $\{X \le x\}$;
+  \item it rises from $0$ to $1$: $F_X(x) \to 0$ as $x \to -\infty$ and
+    $F_X(x) \to 1$ as $x \to \infty$;
+  \item it gives the probability of any interval as a difference,
+    \[
+      P(a < X \le b) = F_X(b) - F_X(a) .
+    \]
+\end{itemize}
+For example, $P(0.5 < T \le 1) = F_T(1) - F_T(0.5) = (1 - e^{-2}) -
+(1 - e^{-1}) \approx 0.233$, in agreement with \Cref{ex:ch05-exponential},
+with no integral left to compute.
+
+\Cref{fig:ch05-cdf} shows the two kinds side by side. A discrete CDF is a
+staircase: flat between the possible values, and jumping at each value
+$x$ by exactly $p_X(x)$. A continuous CDF has no jumps, because no single
+value carries any probability. Where the density is high, the CDF climbs
+steeply. In fact, by the fundamental theorem of calculus, the density is
+the slope of the CDF,
+\[
+  f_X(x) = F_X'(x) ,
+\]
+at every $x$ where $f_X$ is continuous. This is the same derivative as
+in \Cref{sec:ch02-slope}: the density measures how fast probability
+accumulates as $x$ grows. For the exponential, $\frac{d}{dt}(1 -
+e^{-2t}) = 2e^{-2t}$, which is $f_T$.
+
+\begin{figure}[ht]
+  \centering
+  \begin{tikzpicture}
+    \begin{axis}[
+      name=dcdf, width=0.47\textwidth, height=0.36\textwidth,
+      xmin=0.5, xmax=13.5, ymin=0, ymax=1.1,
+      xtick={2,4,...,12}, ytick={0, 0.5, 1},
+      xlabel={$s$}, ylabel={$F_S(s)$}, axis lines*=left,
+      title={\small sum of two dice},
+    ]
+      \addplot[very thick, blue!60!black, const plot, jump mark left,
+        mark=*, mark size=1.2pt] coordinates {
+        (0.5,0) (2,0.0278) (3,0.0833) (4,0.1667) (5,0.2778) (6,0.4167)
+        (7,0.5833) (8,0.7222) (9,0.8333) (10,0.9167) (11,0.9722)
+        (12,1) (13.5,1)};
+    \end{axis}
+    \begin{axis}[
+      at={(dcdf.east)}, anchor=west, xshift=0.07\textwidth,
+      width=0.47\textwidth, height=0.36\textwidth,
+      xmin=-0.5, xmax=2.5, ymin=0, ymax=1.1,
+      xtick={0, 0.5, 1, 2}, ytick={0, 0.5, 1},
+      xlabel={$t$}, ylabel={$F_T(t)$}, axis lines*=left,
+      title={\small exponential, $\lambda = 2$},
+    ]
+      \addplot[dashed, gray] coordinates {(-0.5,1) (2.5,1)};
+      \addplot[very thick, blue!60!black] coordinates
+        {(-0.5,0) (0,0)};
+      \addplot[very thick, blue!60!black, domain=0:2.5, samples=100]
+        {1 - exp(-2*x)};
+      \addplot[thick, accent] coordinates {(0.5,0.632) (1,0.632)};
+      \addplot[thick, accent, <->, >=stealth] coordinates
+        {(1,0.632) (1,0.865)};
+      \node[font=\small, anchor=west] at (axis cs:1.05,0.74) {$0.233$};
+    \end{axis}
+  \end{tikzpicture}
+  \caption{Cumulative distribution functions. Left: the staircase CDF of
+    the sum of two dice, which jumps by $p_S(s)$ at each value $s$.
+    Right: the smooth CDF $1 - e^{-2t}$ of the exponential waiting time.
+    The rise from $t = 0.5$ to $t = 1$ (red) is $P(0.5 < T \le 1)$, the
+    shaded area in \Cref{fig:ch05-pdf}.}
+  \label{fig:ch05-cdf}
+\end{figure}
+
+\paragraph{Sampling with the CDF.}
+The CDF also gives a way to \emph{generate} random values. Computers
+produce uniform random numbers $U$ on $[0, 1]$ cheaply. To turn them
+into samples of $X$, solve $F_X(x) = U$ for $x$, that is, set $X =
+F_X^{-1}(U)$. This works because $F_X^{-1}(U) \le x$ exactly when $U \le
+F_X(x)$, which happens with probability $F_X(x)$, so the result has the
+right CDF. For the exponential, $1 - e^{-2t} = u$ gives
+\[
+  t = -\tfrac12 \log(1 - u) .
+\]
+For a discrete random variable, the same idea reads: lay the
+probabilities $p_1, \dots, p_K$ end to end along $[0, 1]$, and return
+the value whose piece contains $U$. This is how a language model's next
+token is drawn from its categorical distribution. Generative models
+such as normalizing flows, which also appeared in
+\Cref{sec:ch03-det-ai}, extend the idea to many dimensions: they learn
+a function that turns simple random inputs into realistic samples.
+
+\subsection{Random Variables in AI}
+\label{sec:ch05-rv-ai}
+
+Both kinds of random variable are everywhere in machine learning, and
+many models mix them.
+\begin{itemize}
+  \item \emph{Labels.} A class label is categorical; a yes-or-no label
+    is Bernoulli. A regression target, such as a price or a temperature,
+    is continuous.
+  \item \emph{Model outputs.} A classifier outputs a PMF over classes,
+    not a single answer. A regression model is often read as predicting
+    the center of a density over targets, a view that
+    \Cref{chap:ch06} uses to derive loss functions.
+  \item \emph{Data.} The training set is treated as a sample of random
+    examples. Pixel intensities and sensor readings are continuous,
+    while words and tokens are discrete.
+  \item \emph{Randomness inside training.} Weights are initialized by
+    drawing from a continuous distribution, mini-batches are random
+    subsets of the data, and dropout multiplies each activation by an
+    independent Bernoulli mask.
+  \item \emph{Generation.} A language model samples each token from a
+    categorical distribution, and image models such as diffusion models
+    start from continuous random noise.
+\end{itemize}
+
+\begin{aibox}
+  When a chatbot answers the same prompt differently twice, it is
+  because the next token is a random variable. At every step, the model
+  computes logits over its vocabulary, the softmax turns them into a
+  categorical PMF, and a token is sampled from that PMF. The temperature
+  of \Cref{fig:ch01-softmax} reshapes the PMF before sampling: a low
+  temperature piles the probability onto the top token, making the
+  output nearly deterministic, and a high temperature flattens it,
+  making the output more varied. Setting the temperature to $0$ means
+  always taking the most probable token, which is called \emph{greedy
+  decoding}.
+\end{aibox}
+
+\subsection{In Code: Sampling and Computing Probabilities}
+\label{sec:ch05-rv-code}
+
+NumPy generates random samples, and \texttt{scipy.stats} evaluates
+PMFs, PDFs, and CDFs exactly. Simulating many rolls of two dice and
+counting the sums recovers the PMF of \Cref{ex:ch05-dice}:
+
+\begin{lstlisting}
+import numpy as np
+
+rng = np.random.default_rng(0)
+rolls = rng.integers(1, 7, size=(100_000, 2))  # two dice per row
+S = rolls.sum(axis=1)
+
+values, counts = np.unique(S, return_counts=True)
+values                # [2 3 4 ... 12]
+counts / len(S)       # [0.027 0.055 0.084 0.111 0.141 0.168 ...]
+np.mean(S == 7)       # 0.168, vs. exactly 6/36 = 0.167
+\end{lstlisting}
+
+Each sample frequency is close to the exact probability, and the
+agreement improves as the number of rolls grows, a fact known as the
+\emph{law of large numbers}.
+
+For a continuous distribution, \texttt{scipy.stats} provides the density
+and the CDF directly:
+
+\begin{lstlisting}
+from scipy import stats
+
+T = stats.expon(scale=0.5)    # rate 2, so scale = 1/2
+T.pdf(0)                      # 2.0: a density can exceed 1
+T.cdf(1)                      # 0.865 = 1 - e^{-2}
+T.cdf(1) - T.cdf(0.5)         # 0.233 = P(0.5 < T <= 1)
+
+t = T.rvs(size=100_000, random_state=rng)
+np.mean(t <= 1)               # 0.865
+\end{lstlisting}
+
+\begin{warning}
+  Libraries do not agree on how to parametrize distributions. SciPy and
+  NumPy describe the exponential by its \texttt{scale}, $1/\lambda$, not
+  its rate $\lambda$, so \texttt{stats.expon(scale=2)} has rate $1/2$,
+  not $2$. Check the documentation before trusting a parameter name,
+  and sanity-check the result, for example by comparing a sample mean
+  with what you expect.
+\end{warning}
+
+Sampling through the inverse CDF needs nothing but uniform random
+numbers:
+
+\begin{lstlisting}
+u = rng.uniform(size=100_000)
+t = -np.log(1 - u) / 2        # inverse of F(t) = 1 - e^{-2t}
+np.mean(t <= 1)               # 0.865, as before
+\end{lstlisting}
+
+Finally, sampling tokens from a categorical distribution, as a language
+model does, takes one call. Here the logits are those of
+\Cref{fig:ch01-softmax}:
+
+\begin{lstlisting}
+logits = np.array([2.0, 1.0, 0.5, -1.0])
+p = np.exp(logits) / np.exp(logits).sum()     # softmax: a PMF
+p                                             # [0.609 0.224 0.136 0.030]
+
+tokens = rng.choice(4, size=10_000, p=p)
+np.bincount(tokens) / len(tokens)             # [0.607 0.223 0.141 0.029]
+\end{lstlisting}
+
+\section{Common Probability Distributions}
+\label{sec:ch05-distributions}
+
+A handful of distributions cover most of what machine learning needs.
+Each one is really a \emph{family}: a formula with a few
+\emph{parameters}, such as the $\theta$ of a Bernoulli or the $\lambda$
+of an exponential, and each setting of the parameters picks out one
+distribution. We write $p(x; \theta)$ to show the dependence on the
+parameter. Choosing a family turns the question ``what is the
+distribution of the data?'', which has infinitely many possible
+answers, into ``what are the parameters?'', which has a few numbers for
+an answer. Fitting those numbers to data is the subject of
+\Cref{chap:ch06}. This section introduces the families, starting with
+two numbers that summarize any distribution.
+
+\subsection{Mean and Variance}
+\label{sec:ch05-moments}
+
+A distribution has a center and a spread. The center is the
+probability-weighted average of the values.
+
+\begin{definition}[Mean and variance]
+  \label{def:mean-variance}
+  The \emph{mean}, or \emph{expected value}, of a random variable $X$ is
+  \[
+    \E[X] = \sum_x x \, p_X(x)
+    \quad\text{(discrete)},
+    \qquad
+    \E[X] = \int_{-\infty}^{\infty} x \, f_X(x)\, dx
+    \quad\text{(continuous)}.
+  \]
+  Writing $\mu = \E[X]$, the \emph{variance} of $X$ is the mean squared
+  distance from $\mu$,
+  \[
+    \operatorname{Var}(X) = \E\bigl[(X - \mu)^2\bigr],
+  \]
+  computed with the same sum or integral, with $(x - \mu)^2$ in place of
+  $x$. The \emph{standard deviation} is $\sigma = \sqrt{\operatorname{Var}(X)}$.
+\end{definition}
+
+For the sum of two dice, the PMF of \Cref{ex:ch05-dice} is symmetric
+about $7$, so $\E[S] = 7$, and
+\[
+  \operatorname{Var}(S) = \sum_{s=2}^{12} (s - 7)^2\, p_S(s)
+  = \frac{2(25 \cdot 1 + 16 \cdot 2 + 9 \cdot 3 + 4 \cdot 4 + 1 \cdot 5)}{36}
+  = \frac{35}{6} \approx 5.83 ,
+\]
+a standard deviation of about $2.4$. For the exponential waiting time of
+\Cref{ex:ch05-exponential}, an integration by parts gives $\E[T] =
+1/\lambda = 0.5$ seconds and $\operatorname{Var}(T) = 1/\lambda^2 =
+0.25$. The variance is measured in squared units, which is why the
+standard deviation, in the units of $X$ itself, is easier to read.
+
+Two rules follow directly from the definition, because sums and
+integrals are linear. For numbers $a$ and $b$,
+\begin{equation}
+  \E[aX + b] = a\,\E[X] + b,
+  \qquad
+  \operatorname{Var}(aX + b) = a^2 \operatorname{Var}(X) .
+  \label{eq:ch05-affine-moments}
+\end{equation}
+Shifting a random variable moves its mean but not its spread; scaling it
+by $a$ scales the standard deviation by $|a|$. In particular, if $X$ has
+mean $\mu$ and standard deviation $\sigma > 0$, the \emph{standardized}
+variable $(X - \mu)/\sigma$ has mean $0$ and variance $1$.
+
+These are the population versions of the sample mean and variance used
+for PCA in \Cref{sec:ch04-pca-variance}. There, the average ran over $N$
+data points with equal weights; here, it runs over all possible values,
+weighted by their probabilities. The connection between the two, and
+why sample averages approach population ones, is taken up in
+\Cref{chap:ch06}.
+
+\subsection{Bernoulli and Binomial}
+\label{sec:ch05-binomial}
+
+The Bernoulli distribution of \Cref{sec:ch05-discrete} takes the value
+$1$ with probability $\theta$. Its mean is $\E[X] = 0 \cdot (1 - \theta)
++ 1 \cdot \theta = \theta$, so the mean of a yes-or-no variable is the
+probability of yes. Its variance is
+\[
+  \operatorname{Var}(X) = (0 - \theta)^2 (1 - \theta) + (1 - \theta)^2
+  \theta = \theta(1 - \theta),
+\]
+largest at $\theta = 1/2$, when the outcome is hardest to predict, and
+zero at $\theta = 0$ or $1$, when there is no uncertainty left.
+
+Now repeat a Bernoulli trial $n$ times, \emph{independently}, meaning
+that the result of one trial tells us nothing about the others, and
+count the successes. The count $K$ can be any of $0, 1, \dots, n$. A
+particular sequence with $k$ successes and $n - k$ failures has
+probability $\theta^k (1 - \theta)^{n - k}$, and there are
+$\binom{n}{k} = \frac{n!}{k!\,(n-k)!}$ ways to choose which trials
+succeed, so
+\[
+  p(k; n, \theta) = \binom{n}{k}\, \theta^k (1 - \theta)^{n - k},
+  \qquad k = 0, 1, \dots, n .
+\]
+This is the \emph{binomial} distribution. Since $K$ is a sum of $n$
+independent Bernoulli variables, and means and variances of independent
+variables add (a property of independence we take on trust for now),
+its mean and
+variance are
+\[
+  \E[K] = n\theta,
+  \qquad
+  \operatorname{Var}(K) = n\theta(1 - \theta) .
+\]
+
+\begin{example}
+  \label{ex:ch05-test-accuracy}
+  A classifier is right on $90\%$ of the examples it will ever see. We
+  evaluate it on a test set of $n = 200$ random examples. The number of
+  correct answers $K$ is binomial with $\theta = 0.9$, so $\E[K] = 180$
+  and $\operatorname{Var}(K) = 200 \cdot 0.9 \cdot 0.1 = 18$, a standard
+  deviation of $\sqrt{18} \approx 4.2$ correct answers, or $2.1$
+  percentage points of accuracy. Adding up the PMF gives $P(K \le 175)
+  \approx 0.145$: about one time in seven, this $90\%$ model scores
+  $87.5\%$ or less. A difference of two points between two models on a
+  test set this small may be nothing but luck.
+\end{example}
+
+\Cref{fig:ch05-binomial} plots this PMF. Its bell shape is no accident,
+as \Cref{sec:ch05-gaussian} explains.
+
+\begin{figure}[ht]
+  \centering
+  \begin{tikzpicture}
+    \begin{axis}[
+      ybar, bar width=4.5pt, bar shift=0pt,
+      width=0.8\textwidth, height=0.34\textwidth,
+      xmin=163, xmax=197, ymin=0, ymax=0.105,
+      xtick={165,170,...,195}, ytick={0, 0.05, 0.1},
+      yticklabel style={/pgf/number format/fixed,
+        /pgf/number format/precision=2},
+      xlabel={number correct, $k$}, ylabel={$p(k)$}, axis lines*=left,
+      legend style={at={(0.5,1.03)}, anchor=south, draw=none,
+        /tikz/every even column/.append style={column sep=1.5em}},
+      legend columns=2,
+      legend cell align=left,
+    ]
+      \addplot[fill=blue!35, draw=blue!60!black] coordinates {
+        (164,0.0002) (165,0.0004) (166,0.0008) (167,0.0014) (168,0.0024)
+        (169,0.0042) (170,0.0068) (171,0.0108) (172,0.0163) (173,0.0238)
+        (174,0.0332) (175,0.0444) (176,0.0568) (177,0.0693) (178,0.0806)
+        (179,0.0892) (180,0.0936) (181,0.0931) (182,0.0875) (183,0.0775)
+        (184,0.0644) (185,0.0501) (186,0.0364) (187,0.0245) (188,0.0153)
+        (189,0.0087) (190,0.0045) (191,0.0021) (192,0.0009) (193,0.0003)
+        (194,0.0001)};
+      \addplot[very thick, accent, sharp plot, domain=163:197,
+        samples=120]
+        {exp(-(x-180)^2/36)/sqrt(36*pi)};
+      \legend{{binomial, $n = 200$, $\theta = 0.9$},
+        {Gaussian, $\mu = 180$, $\sigma^2 = 18$}}
+    \end{axis}
+  \end{tikzpicture}
+  \caption{The number of correct answers of a $90\%$-accurate classifier
+    on $200$ test examples is binomial (bars). It is spread over roughly
+    $170$ to $190$, and it is closely matched by the Gaussian density
+    with the same mean and variance (red curve).}
+  \label{fig:ch05-binomial}
+\end{figure}
+
+\subsection{Categorical and One-Hot Vectors}
+\label{sec:ch05-categorical}
+
+A categorical random variable takes one of $K$ classes with
+probabilities $\vect{p} = (p_1, \dots, p_K)$. Class numbers $1, \dots, K$
+are labels, not quantities, so ``the mean class'' makes no sense. The
+standard fix is to encode the class as a \emph{one-hot} vector $\vect{x}
+\in \{0, 1\}^K$, with a $1$ in the position of the class and $0$
+elsewhere: with $K = 4$, class $2$ becomes $(0, 1, 0, 0)$. This is how
+labels are stored for training a classifier.
+
+One-hot encoding makes the PMF and the mean tidy. Exactly one $x_k$ is
+$1$, so the PMF can be written as a product in which only the factor of
+the observed class survives,
+\[
+  p(\vect{x}; \vect{p}) = \prod_{k=1}^K p_k^{x_k},
+  \qquad
+  \log p(\vect{x}; \vect{p}) = \sum_{k=1}^K x_k \log p_k ,
+\]
+exactly as the Bernoulli PMF $\theta^x (1 - \theta)^{1-x}$ does for $K =
+2$. The negative of this log-probability, with $\vect{p}$ the model's
+softmax output and $\vect{x}$ the true label, is the cross-entropy loss
+used to train nearly every classifier; \Cref{chap:ch07} explains where
+the name comes from. The mean of a one-hot vector, taken coordinate by
+coordinate, is the probability vector itself: $\E[x_k] = 1 \cdot p_k +
+0 \cdot (1 - p_k) = p_k$, so $\E[\vect{x}] = \vect{p}$.
+
+Counting how often each class occurs in $n$ independent draws gives the
+\emph{multinomial} distribution, the $K$-class version of the binomial.
+It models, for example, the word counts of a document in a
+bag-of-words model.
+
+\subsection{Uniform and Exponential}
+\label{sec:ch05-uniform-exp}
+
+The two continuous distributions of \Cref{sec:ch05-continuous}
+generalize directly.
+
+\paragraph{Uniform.}
+The \emph{uniform} distribution on an interval $[a, b]$ has constant
+density $1/(b - a)$ there and $0$ elsewhere. It has mean $(a + b)/2$,
+the midpoint, and variance $(b - a)^2/12$. It is the distribution of
+``no preference'', and it is what random number generators produce;
+\Cref{sec:ch05-cdf} showed how to turn uniform samples into samples of
+any other distribution.
+
+\paragraph{Exponential.}
+The \emph{exponential} distribution with rate $\lambda$ has density
+$\lambda e^{-\lambda t}$ for $t \ge 0$, mean $1/\lambda$, and variance
+$1/\lambda^2$. It models waiting times between events that occur at a
+constant average rate: requests to a server, failures of a disk, arrivals
+of customers.
+
+\begin{aibox}
+  Weight initialization picks the variance of the starting weights so
+  that signals neither grow nor shrink as they pass through the layers.
+  \emph{Glorot} (or Xavier) initialization draws each weight of a layer
+  with $n_{\text{in}}$ inputs and $n_{\text{out}}$ outputs from the
+  uniform distribution on $[-a, a]$ with $a = \sqrt{6/(n_{\text{in}} +
+  n_{\text{out}})}$. Its variance is $(2a)^2/12 = a^2/3 = 2/(n_{\text{in}}
+  + n_{\text{out}})$, which is the target the formula was designed to
+  hit. The bounds look arbitrary until we compute the variance.
+\end{aibox}
+
+\subsection{The Gaussian Distribution}
+\label{sec:ch05-gaussian}
+
+The most important continuous distribution is the \emph{Gaussian}, or
+\emph{normal}, distribution.
+
+\begin{definition}[Gaussian distribution]
+  \label{def:gaussian}
+  A random variable $X$ has the \emph{Gaussian distribution} with mean
+  $\mu$ and variance $\sigma^2 > 0$, written $X \sim \mathcal{N}(\mu,
+  \sigma^2)$, if its density is
+  \[
+    \mathcal{N}(x; \mu, \sigma^2)
+    = \frac{1}{\sqrt{2\pi\sigma^2}}
+      \exp\Bigl(-\frac{(x - \mu)^2}{2\sigma^2}\Bigr),
+    \qquad x \in \R .
+  \]
+  The case $\mu = 0$, $\sigma = 1$ is the \emph{standard normal}
+  distribution, usually written $Z \sim \mathcal{N}(0, 1)$.
+\end{definition}
+
+The shape comes from the exponent. The squared distance $(x - \mu)^2$,
+divided by $2\sigma^2$, is a parabola that opens upward, and $e$ to the
+minus that parabola is a bell centered at $\mu$. The parameter $\sigma$
+sets the width: the density falls to about $61\%$ of its peak one
+standard deviation away and to about $14\%$ two standard deviations
+away. The constant in front, $1/\sqrt{2\pi\sigma^2}$, is whatever makes
+the total area $1$, so a narrow Gaussian must be tall
+(\Cref{fig:ch05-gaussian}, left). As the definition promises, the mean
+is $\mu$ and the variance is $\sigma^2$.
+
+Every Gaussian is a shifted and stretched copy of the standard one. If
+$Z \sim \mathcal{N}(0, 1)$, then
+\begin{equation}
+  X = \mu + \sigma Z \sim \mathcal{N}(\mu, \sigma^2),
+  \label{eq:ch05-gaussian-affine}
+\end{equation}
+and conversely, standardizing $X$ gives back $Z = (X - \mu)/\sigma$.
+By \cref{eq:ch05-affine-moments}, the mean and variance come out right;
+the point here is that the result is still Gaussian. So every question
+about any Gaussian reduces to the standard normal. In particular, the
+probability of landing within $k$ standard deviations of the mean is
+the same for all Gaussians:
+\[
+  P(|X - \mu| \le \sigma) \approx 0.683, \quad
+  P(|X - \mu| \le 2\sigma) \approx 0.954, \quad
+  P(|X - \mu| \le 3\sigma) \approx 0.997 .
+\]
+This is the \emph{68--95--99.7 rule} (\Cref{fig:ch05-gaussian}, right).
+Gaussian tails are thin: a value more than three standard deviations out
+happens about three times in a thousand, and one more than five standard
+deviations out about once in $1.7$ million.
+
+\begin{figure}[ht]
+  \centering
+  \begin{tikzpicture}
+    \begin{axis}[
+      name=gauss, width=0.5\textwidth, height=0.36\textwidth,
+      xmin=-4, xmax=5, ymin=0, ymax=0.85,
+      xtick={-4,-2,...,4}, ytick={0, 0.4, 0.8},
+      xlabel={$x$}, axis lines*=left,
+      legend style={at={(1,1)}, anchor=north east, draw=none,
+        font=\scriptsize, fill=none},
+      legend cell align=left,
+    ]
+      \addplot[very thick, blue!60!black, domain=-4:5, samples=150]
+        {exp(-x^2/2)/sqrt(2*pi)};
+      \addplot[very thick, accent, domain=-4:5, samples=150]
+        {exp(-x^2/(2*0.25))/sqrt(2*pi*0.25)};
+      \addplot[very thick, green!45!black, dashed, domain=-4:5,
+        samples=150] {exp(-(x-2)^2/(2*2.25))/sqrt(2*pi*2.25)};
+      \legend{{$\mu = 0, \sigma = 1$}, {$\mu = 0, \sigma = 0.5$},
+        {$\mu = 2, \sigma = 1.5$}}
+    \end{axis}
+    \begin{axis}[
+      at={(gauss.east)}, anchor=west, xshift=0.05\textwidth,
+      width=0.5\textwidth, height=0.36\textwidth,
+      xmin=-3.8, xmax=3.8, ymin=0, ymax=0.45,
+      xtick={-3,...,3}, ytick={0, 0.2, 0.4},
+      xticklabels={$-3\sigma$, $-2\sigma$, $-\sigma$, $\mu$, $\sigma$,
+        $2\sigma$, $3\sigma$},
+      axis lines*=left,
+    ]
+      \addplot[fill=accent!15, draw=none, domain=-3:3, samples=80]
+        {exp(-x^2/2)/sqrt(2*pi)} \closedcycle;
+      \addplot[fill=accent!30, draw=none, domain=-2:2, samples=80]
+        {exp(-x^2/2)/sqrt(2*pi)} \closedcycle;
+      \addplot[fill=accent!55, draw=none, domain=-1:1, samples=80]
+        {exp(-x^2/2)/sqrt(2*pi)} \closedcycle;
+      \addplot[very thick, blue!60!black, domain=-3.8:3.8, samples=150]
+        {exp(-x^2/2)/sqrt(2*pi)};
+      \node[font=\scriptsize] at (axis cs:0,0.15) {$68.3\%$};
+      \node[font=\scriptsize] at (axis cs:-1.5,0.035) {$13.6\%$};
+      \node[font=\scriptsize] at (axis cs:1.5,0.035) {$13.6\%$};
+    \end{axis}
+  \end{tikzpicture}
+  \caption{Left: Gaussian densities with different means and standard
+    deviations. The mean sets the center and $\sigma$ the width; the
+    narrow curve is taller, so that every area is $1$. Right: about
+    $68\%$ of the probability lies within one standard deviation of the
+    mean, $95\%$ within two, and $99.7\%$ within three.}
+  \label{fig:ch05-gaussian}
+\end{figure}
+
+\paragraph{Why Gaussians are everywhere.}
+\Cref{fig:ch05-binomial} showed a binomial count, a sum of $200$ small
+independent contributions, falling almost exactly on a Gaussian curve.
+This is an instance of the \emph{central limit theorem}: a sum of many
+independent random variables, none of which dominates, is approximately
+Gaussian, whatever the distributions of the pieces. Measurement errors,
+heights, and test scores are sums of many small effects, which is why
+they look Gaussian. The approximation is good enough to use. The
+Gaussian of \Cref{fig:ch05-binomial}, with its CDF evaluated at $175.5$,
+halfway to the next count, gives $P(K \le 175) \approx 0.144$, against
+the exact $0.145$.
+
+\begin{aibox}
+  Gaussians appear throughout deep learning.
+  \begin{itemize}
+    \item \emph{Initialization.} He initialization draws each weight of
+      a ReLU layer from $\mathcal{N}(0, 2/n_{\text{in}})$.
+    \item \emph{Noise models.} Assuming that a regression target is the
+      model's prediction plus Gaussian noise turns maximum likelihood
+      into minimizing the squared error, as \Cref{chap:ch06} shows.
+    \item \emph{Diffusion models} generate images by starting from
+      Gaussian noise and removing it step by step.
+    \item \emph{The reparameterization trick.} A variational autoencoder
+      needs a sample from $\mathcal{N}(\mu, \sigma^2)$, where $\mu$ and
+      $\sigma$ are outputs of a network, and it needs gradients with
+      respect to them. Drawing the sample directly blocks the gradient.
+      Writing it as $\mu + \sigma z$ with $z \sim \mathcal{N}(0, 1)$, as
+      in \cref{eq:ch05-gaussian-affine}, moves the randomness into $z$
+      and leaves a function of $\mu$ and $\sigma$ that can be
+      differentiated.
+  \end{itemize}
+\end{aibox}
+
+\subsection{The Multivariate Gaussian}
+\label{sec:ch05-mvn}
+
+Data points are vectors, so we need distributions over $\R^d$. A
+\emph{random vector} $\vect{x} = (X_1, \dots, X_d)$ is a vector of random
+variables; it is described by a density $p(\vect{x})$ on $\R^d$ whose
+integral over a region is the probability of landing there. Its mean is
+the vector of means, $\vect{\mu} = \E[\vect{x}]$. Its spread is
+described by the \emph{covariance matrix}
+\[
+  \Sigma = \E\bigl[(\vect{x} - \vect{\mu})(\vect{x} - \vect{\mu})^\top\bigr],
+\]
+the population version of the sample covariance $C$ of
+\Cref{sec:ch04-pca-variance}: the diagonal entries are the variances of
+the coordinates, and the off-diagonal entries are their covariances. As
+with $C$, $\Sigma$ is symmetric, and the variance along a unit vector
+$\vect{w}$ is $\vect{w}^\top \Sigma \vect{w}$.
+
+The simplest random vector is $\vect{z} \sim \mathcal{N}(\vect{0}, I)$,
+whose $d$ coordinates are independent standard normals. Its density is
+the product of $d$ standard normal densities,
+\[
+  p(\vect{z}) = \prod_{i=1}^d \frac{1}{\sqrt{2\pi}}\, e^{-z_i^2/2}
+  = (2\pi)^{-d/2} \exp\bigl(-\tfrac12 \|\vect{z}\|^2\bigr) .
+\]
+Its contours are circles centered at $\vect{0}$, since the density
+depends only on the length of $\vect{z}$. Following
+\cref{eq:ch05-gaussian-affine}, a general Gaussian vector is an affine
+image of this one, $\vect{x} = \vect{\mu} + A\vect{z}$ for an invertible
+matrix $A$. Its mean is $\vect{\mu}$, and its covariance is
+\[
+  \Sigma = \E\bigl[(A\vect{z})(A\vect{z})^\top\bigr]
+  = A\, \E[\vect{z}\vect{z}^\top]\, A^\top = AA^\top ,
+\]
+since $\E[\vect{z}\vect{z}^\top] = I$. The density of $\vect{x}$ comes from
+the change-of-variables rule of \Cref{sec:ch03-det-ai}: substitute
+$\vect{z} = A^{-1}(\vect{x} - \vect{\mu})$ and divide by $|\det A|$. Two
+identities tidy the result. First, $\|A^{-1}(\vect{x} - \vect{\mu})\|^2 =
+(\vect{x} - \vect{\mu})^\top (AA^\top)^{-1} (\vect{x} - \vect{\mu})$.
+Second, $\det \Sigma = \det A \cdot \det A^\top = (\det A)^2$, so
+$|\det A| = \sqrt{\det \Sigma}$.
+
+\begin{definition}[Multivariate Gaussian]
+  \label{def:mvn}
+  A random vector $\vect{x} \in \R^d$ has the \emph{multivariate
+  Gaussian distribution} with mean $\vect{\mu}$ and symmetric positive
+  definite covariance $\Sigma$, written $\vect{x} \sim
+  \mathcal{N}(\vect{\mu}, \Sigma)$, if its density is
+  \[
+    \mathcal{N}(\vect{x}; \vect{\mu}, \Sigma)
+    = \frac{1}{(2\pi)^{d/2} \sqrt{\det \Sigma}}
+      \exp\Bigl(-\tfrac12 (\vect{x} - \vect{\mu})^\top \Sigma^{-1}
+      (\vect{x} - \vect{\mu})\Bigr) .
+  \]
+\end{definition}
+
+For $d = 1$, $\Sigma = \sigma^2$ and this is the Gaussian of
+\Cref{def:gaussian}. The determinant in the constant is the area
+correction of \Cref{sec:ch03-det-ai}: a covariance that stretches the
+circle into a larger ellipse spreads the same probability over more
+area, so the density must be lower.
+
+\paragraph{The shape of a Gaussian.}
+The density is constant where the quadratic form $(\vect{x} -
+\vect{\mu})^\top \Sigma^{-1} (\vect{x} - \vect{\mu})$ is constant, and
+the eigenvectors of $\Sigma$ make this form easy to read. By the
+spectral theorem (\Cref{sec:ch04-symmetric}), $\Sigma = Q\Lambda Q^\top$,
+and in the rotated coordinates $\vect{y} = Q^\top(\vect{x} -
+\vect{\mu})$ the form becomes $\sum_i y_i^2/\lambda_i$. Its level sets
+are ellipses centered at $\vect{\mu}$, with axes along the eigenvectors
+of $\Sigma$ and half-lengths proportional to $\sqrt{\lambda_i}$, the
+standard deviations along those axes. This is the picture behind PCA:
+the principal components of Gaussian data are the axes of its
+elliptical contours.
+
+\begin{example}
+  \label{ex:ch05-mvn}
+  Take the mean and covariance of the five points of
+  \Cref{ex:ch04-pca-data},
+  \[
+    \vect{\mu} = \begin{bmatrix} 5 \\ 3 \end{bmatrix},
+    \qquad
+    \Sigma = \begin{bmatrix} 2.5 & 1.5 \\ 1.5 & 2.5 \end{bmatrix}.
+  \]
+  The eigenvalues of $\Sigma$ are $4$, along $(1, 1)$, and $1$, along
+  $(-1, 1)$, so the contours of $\mathcal{N}(\vect{\mu}, \Sigma)$ are
+  ellipses tilted at $45^\circ$, twice as long as they are wide
+  (\Cref{fig:ch05-mvn}). The standard deviation is $2$ along the long
+  axis and $1$ along the short one. Since $\det \Sigma = 6.25 - 2.25 =
+  4$, the peak density at $\vect{\mu}$ is $1/(2\pi \cdot 2) \approx
+  0.080$.
+\end{example}
+
+\begin{figure}[ht]
+  \centering
+  \begin{tikzpicture}[scale=0.6, >=stealth]
+    \draw[gray!25] (0,-1) grid (10,7);
+    \draw[gray!60, ->] (0,-1) -- (10.4,-1) node[right, font=\small] {$x_1$};
+    \draw[gray!60, ->] (0,-1) -- (0,7.4) node[above, font=\small] {$x_2$};
+    \foreach \x in {0,2,...,10} \node[below, font=\scriptsize] at (\x,-1) {\x};
+    \foreach \y in {0,2,...,6} \node[left, font=\scriptsize] at (0,\y) {\y};
+    \fill[blue!8, rotate around={45:(5,3)}] (5,3) ellipse [x radius=4, y radius=2];
+    \draw[blue!50!black, rotate around={45:(5,3)}] (5,3) ellipse [x radius=4, y radius=2];
+    \fill[blue!18, rotate around={45:(5,3)}] (5,3) ellipse [x radius=2, y radius=1];
+    \draw[blue!50!black, rotate around={45:(5,3)}] (5,3) ellipse [x radius=2, y radius=1];
+    \draw[->, very thick, green!45!black] (5,3) -- (6.414,4.414)
+      node[above left=-1pt, font=\scriptsize] {$\sqrt{\lambda_1} = 2$};
+    \draw[->, very thick, green!45!black] (5,3) -- (4.293,3.707)
+      node[anchor=north east, font=\scriptsize] {$\sqrt{\lambda_2} = 1$};
+    \foreach \p in {(7,5), (3,1), (6,2), (4,4)}
+      \fill[accent] \p circle (2.5pt);
+    \fill[black] (5,3) circle (2.5pt) node[below right, font=\scriptsize] {$\vect{\mu}$};
+  \end{tikzpicture}
+  \caption{Contours of the Gaussian density $\mathcal{N}(\vect{\mu},
+    \Sigma)$ of \Cref{ex:ch05-mvn}, at one and two standard deviations
+    from the mean. The ellipses point along the eigenvectors of $\Sigma$
+    (green arrows, at one standard deviation), with half-axes
+    proportional to the square roots of its eigenvalues. Red points: the
+    data of \Cref{ex:ch04-pca-data}, whose mean and covariance define this
+    Gaussian.}
+  \label{fig:ch05-mvn}
+\end{figure}
+
+\paragraph{Sampling.}
+The construction $\vect{x} = \vect{\mu} + A\vect{z}$ is also how to draw
+samples: generate independent standard normals $\vect{z}$, multiply by
+any matrix $A$ with $AA^\top = \Sigma$, and add $\vect{\mu}$. Two choices
+of $A$ are common. The eigendecomposition gives $A = Q\Lambda^{1/2}$,
+which stretches the circle along the axes and then rotates it. The
+\emph{Cholesky factorization} $\Sigma = LL^\top$, with $L$ lower
+triangular, is cheaper to compute and is what libraries use.
+
+\subsection{Summary of the Distributions}
+\label{sec:ch05-dist-summary}
+
+\Cref{tab:ch05-distributions} collects the distributions of this
+section. When modeling a quantity, start from the kind of values it
+takes: two outcomes suggest a Bernoulli, $K$ unordered classes a
+categorical, counts of successes a binomial, positive waiting times an
+exponential, and a real number that varies around a typical value a
+Gaussian.
+
+\begin{table}[ht]
+  \centering
+  \small
+  \caption{Common probability distributions.}
+  \label{tab:ch05-distributions}
+  \begin{tabular}{@{}lllll@{}}
+    \toprule
+    Distribution & Values & PMF or PDF & Mean & Variance \\
+    \midrule
+    Bernoulli$(\theta)$ & $\{0, 1\}$ & $\theta^x (1 - \theta)^{1-x}$
+      & $\theta$ & $\theta(1 - \theta)$ \\
+    Binomial$(n, \theta)$ & $\{0, \dots, n\}$
+      & $\binom{n}{k}\theta^k (1 - \theta)^{n-k}$
+      & $n\theta$ & $n\theta(1 - \theta)$ \\
+    Categorical$(\vect{p})$ & one-hot $\vect{x}$
+      & $\prod_k p_k^{x_k}$ & $\vect{p}$ & --- \\
+    Uniform$(a, b)$ & $[a, b]$ & $1/(b - a)$
+      & $(a + b)/2$ & $(b - a)^2/12$ \\
+    Exponential$(\lambda)$ & $[0, \infty)$ & $\lambda e^{-\lambda t}$
+      & $1/\lambda$ & $1/\lambda^2$ \\
+    $\mathcal{N}(\mu, \sigma^2)$ & $\R$
+      & $e^{-(x - \mu)^2/(2\sigma^2)} / \sqrt{2\pi\sigma^2}$
+      & $\mu$ & $\sigma^2$ \\
+    $\mathcal{N}(\vect{\mu}, \Sigma)$ & $\R^d$
+      & see \Cref{def:mvn} & $\vect{\mu}$ & $\Sigma$ (covariance) \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection{In Code: Working with Distributions}
+\label{sec:ch05-dist-code}
+
+Every distribution in \texttt{scipy.stats} has the same methods:
+\texttt{pmf} or \texttt{pdf}, \texttt{cdf}, \texttt{mean}, \texttt{std},
+and \texttt{rvs} for sampling. The test-set question of
+\Cref{ex:ch05-test-accuracy} takes one line, and simulating a few test
+sets shows how much the measured accuracy moves:
+
+\begin{lstlisting}
+import numpy as np
+from scipy import stats
+
+rng = np.random.default_rng(0)
+B = stats.binom(n=200, p=0.9)
+B.mean(), B.std()                 # 180.0, 4.24
+B.cdf(175)                        # 0.145 = P(K <= 175)
+
+rng.binomial(200, 0.9, size=5) / 200
+# [0.895 0.915 0.935 0.945 0.88 ]: five test sets, one model
+\end{lstlisting}
+
+The inverse of the CDF, called \texttt{ppf} (percent point function) in
+SciPy, answers the reverse question: below which value does a given
+fraction of the probability lie?
+
+\begin{lstlisting}
+N = stats.norm(loc=0, scale=1)    # loc = mu, scale = sigma
+N.pdf(0)                          # 0.399 = 1/sqrt(2 pi)
+N.cdf(1.96)                       # 0.975
+N.ppf(0.975)                      # 1.96: 95% lies within +-1.96 sigma
+\end{lstlisting}
+
+\begin{warning}
+  \texttt{stats.norm} and PyTorch's \texttt{Normal} take the standard
+  deviation $\sigma$ as their scale, while
+  \texttt{rng.multivariate\_normal} and \texttt{stats.multivariate\_normal}
+  take the covariance matrix $\Sigma$, whose diagonal holds variances
+  $\sigma^2$. Passing a variance where a standard deviation is expected
+  is a common silent bug.
+\end{warning}
+
+Sampling from the multivariate Gaussian of \Cref{ex:ch05-mvn} and
+estimating its mean and covariance recovers the parameters. Doing it by
+hand with the Cholesky factor gives the same distribution:
+
+\begin{lstlisting}
+mu = np.array([5.0, 3.0])
+Sigma = np.array([[2.5, 1.5],
+                  [1.5, 2.5]])
+X = rng.multivariate_normal(mu, Sigma, size=10_000)
+X.mean(axis=0)                    # [4.99 3.00]
+np.cov(X, rowvar=False)           # [[2.51 1.49]
+                                  #  [1.49 2.46]]
+
+L = np.linalg.cholesky(Sigma)     # lower triangular, L @ L.T == Sigma
+Z = rng.standard_normal((10_000, 2))
+X2 = mu + Z @ L.T                 # each row is mu + L z
+np.cov(X2, rowvar=False)          # [[2.52 1.49]
+                                  #  [1.49 2.52]]
+\end{lstlisting}
+
+Each row of \texttt{Z} is a vector $\vect{z}^\top$, so the product
+$\vect{z}^\top L^\top = (L\vect{z})^\top$ applies $L$ to every row at
+once. The same idea, in one dimension, is the reparameterization trick:
+
+\begin{lstlisting}
+m, s = 1.5, 0.5                   # in a VAE, outputs of a network
+z = rng.standard_normal(100_000)
+x = m + s * z                     # samples of N(1.5, 0.25)
+x.mean(), x.std()                 # 1.499, 0.500
+\end{lstlisting}
