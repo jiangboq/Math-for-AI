@@ -239,17 +239,13 @@ Rewrite $A\vect{v} = \lambda\vect{v}$ as
 We are looking for a nonzero $\vect{v}$ that the matrix $A - \lambda I$
 sends to $\vect{0}$. As we saw with the projection, this happens exactly
 when $A - \lambda I$ flattens the space onto something lower-dimensional
-and loses information. For a $2 \times 2$ matrix there is a simple test.
-The \emph{determinant}
-\[
-  \det \begin{bmatrix} a & b \\ c & d \end{bmatrix} = ad - bc
-\]
-is the factor by which the matrix scales areas, with a negative sign if
-it reverses orientation. For example, $\det A = 4 - 1 = 3$, and the
-ellipse in \Cref{fig:ch04-eigen} has area $3\pi$, three times that of
-the unit circle. A matrix that flattens the plane onto a line or a point
-gives everything zero area, so it has determinant $0$. The eigenvalues
-are therefore the solutions of the \emph{characteristic equation}
+and loses information, which by \Cref{prop:ch03-invertible} is exactly
+when its determinant is zero. Recall from \Cref{sec:ch03-det} that the
+determinant is the factor by which a matrix scales areas, and for a
+$2 \times 2$ matrix it is $ad - bc$. For example, $\det A = 4 - 1 = 3$,
+and the ellipse in \Cref{fig:ch04-eigen} has area $3\pi$, three times
+that of the unit circle. The eigenvalues are therefore the solutions of
+the \emph{characteristic equation}
 \[
   \det(A - \lambda I) = 0 .
 \]

@@ -1313,6 +1313,354 @@ multiplications, because optimized libraries run large matrix products
 much more efficiently than matrix--vector products. It still pays to
 multiply in the cheap order, and the gap widens as the matrices grow.
 
+\section{The Determinant}
+\label{sec:ch03-det}
+
+\subsection{How Much a Matrix Scales Area}
+\label{sec:ch03-det-area}
+
+Every matrix in \Cref{fig:ch03-transforms} turns the unit square into a
+parallelogram, and the parallelograms have different sizes. The scaling
+doubles the width and halves the height, so the area stays $1$. The shear
+slides the square sideways without changing its area. The projection
+flattens it onto a segment of area $0$. Because a linear transformation
+moves every small square of the grid in the same way, the factor by which
+it changes the area of the unit square is the factor by which it changes
+the area of \emph{every} region. That single number is the determinant.
+
+\begin{definition}[Determinant of a $2 \times 2$ matrix]
+  \label{def:det-2x2}
+  The \emph{determinant} of a $2 \times 2$ matrix is
+  \[
+    \det \begin{bmatrix} a & b \\ c & d \end{bmatrix} = ad - bc .
+  \]
+\end{definition}
+
+To see that $ad - bc$ is an area, take the columns $(a, c) = (3, 1)$ and
+$(b, d) = (1, 2)$, as in \Cref{fig:ch03-det-box}. The parallelogram they
+span sits inside a rectangle of width $a + b = 4$ and height
+$c + d = 3$. Cutting away the two pairs of triangles, of areas
+$ac/2 = 3/2$ and $bd/2 = 1$, and the two small corner rectangles, of
+area $bc = 1$, leaves
+\[
+  (a + b)(c + d) - ac - bd - 2bc = ad - bc = 6 - 1 = 5 .
+\]
+The same bookkeeping works for any columns in this arrangement, and
+the formula extends to all cases once we allow the area to carry a sign.
+
+\begin{figure}[ht]
+  \centering
+  \begin{tikzpicture}[scale=1.2, >=stealth]
+    \draw[gray!25] (-0.4,-0.4) grid (4.4,3.4);
+    \draw[gray!60] (-0.4,0) -- (4.4,0);
+    \draw[gray!60] (0,-0.4) -- (0,3.4);
+    \fill[gray!12] (0,0) rectangle (4,3);
+    \fill[blue!15] (0,0) -- (3,1) -- (4,3) -- (1,2) -- cycle;
+    \draw[gray!70!black] (0,0) rectangle (4,3);
+    \draw[gray!70!black] (3,0) -- (3,1) -- (4,1);
+    \draw[gray!70!black] (0,2) -- (1,2) -- (1,3);
+    \draw[blue!40!black] (0,0) -- (3,1) -- (4,3) -- (1,2) -- cycle;
+    \draw[->, very thick, blue!60!black] (0,0) -- (3,1);
+    \draw[->, very thick, orange!85!black] (0,0) -- (1,2);
+    \node[font=\small] at (2,1.5) {$ad - bc$};
+    \node[font=\scriptsize] at (2.1,0.3) {$ac/2$};
+    \node[font=\scriptsize] at (1.9,2.7) {$ac/2$};
+    \node[font=\scriptsize] at (0.3,1.55) {$bd/2$};
+    \node[font=\scriptsize] at (3.7,1.45) {$bd/2$};
+    \node[font=\scriptsize] at (3.5,0.5) {$bc$};
+    \node[font=\scriptsize] at (0.5,2.5) {$bc$};
+    \node[font=\small, below] at (2,-0.4) {$a + b$};
+    \node[font=\small, right] at (4.4,1.5) {$c + d$};
+  \end{tikzpicture}
+  \caption{The area of the parallelogram spanned by $(a, c) = (3, 1)$
+    (blue) and $(b, d) = (1, 2)$ (orange). It fills the
+    $(a + b) \times (c + d)$ rectangle except for two triangles of
+    area $ac/2$, two of area $bd/2$, and two corner rectangles of area
+    $bc$. What remains has area $ad - bc = 5$.}
+  \label{fig:ch03-det-box}
+\end{figure}
+
+\paragraph{The sign is orientation.}
+The determinant can be negative. Going from the first column to the
+second is a counterclockwise turn when $\det A > 0$, as it is for
+$\vect{e}_1$ and $\vect{e}_2$, and a clockwise turn when $\det A < 0$. A
+negative determinant means that the transformation flips the plane over,
+like the reflection in \Cref{fig:ch03-transforms}(d), whose determinant
+is $(-1)(1) - 0 = -1$. The area scales by $|\det A|$ and the sign records
+whether the plane was flipped.
+
+\paragraph{Zero means flattened.}
+If $\det A = 0$, the unit square goes to a shape with no area: the two
+columns point along the same line (or one of them is zero), and the whole
+plane is squashed onto that line or onto the origin.
+\Cref{fig:ch03-det-signs} shows all three cases.
+
+\begin{figure}[ht]
+  \centering
+  \newcommand{\detpanel}[6]{%
+    % #1, #2: first column; #3, #4: second column; #5: label; #6: matrix
+    \begin{tikzpicture}[scale=0.78, >=stealth]
+      \draw[gray!25] (-1.3,-0.6) grid (3.3,2.3);
+      \draw[gray!60] (-1.3,0) -- (3.3,0);
+      \draw[gray!60] (0,-0.6) -- (0,2.3);
+      \draw[dashed, gray!70!black] (0,0) rectangle (1,1);
+      \fill[blue!15, opacity=0.8] (0,0) -- (#1,#2) -- ({#1+#3},{#2+#4})
+        -- (#3,#4) -- cycle;
+      \draw[blue!40!black] (0,0) -- (#1,#2) -- ({#1+#3},{#2+#4})
+        -- (#3,#4) -- cycle;
+      \draw[->, very thick, blue!60!black] (0,0) -- (#1,#2);
+      \draw[->, very thick, orange!85!black] (0,0) -- (#3,#4);
+      \node[font=\small, align=center] at (1,-1.6)
+        {#5\\[2pt] $#6$};
+    \end{tikzpicture}}
+  \detpanel{2}{1}{-1}{1}{(a) $\det = 3$}
+    {\begin{bmatrix} 2 & -1 \\ 1 & 1 \end{bmatrix}}\hfill
+  \detpanel{1}{1}{1}{0}{(b) $\det = -1$}
+    {\begin{bmatrix} 1 & 1 \\ 1 & 0 \end{bmatrix}}\hfill
+  \detpanel{2}{1}{1}{0.5}{(c) $\det = 0$}
+    {\begin{bmatrix} 2 & 1 \\ 1 & 0.5 \end{bmatrix}}
+  \caption{The determinant as signed area. The dashed square is the unit
+    square, and the blue and orange arrows are the two columns. (a) The
+    matrix of \Cref{ex:ch03-matvec} triples every area. (b) The area is
+    unchanged, but the second column is now clockwise from the first: the
+    plane has been flipped. (c) The second column is half the first, so
+    the square collapses onto a segment.}
+  \label{fig:ch03-det-signs}
+\end{figure}
+
+\subsection{Determinants in Higher Dimensions}
+\label{sec:ch03-det-nd}
+
+In $\R^3$, a $3 \times 3$ matrix sends the unit cube to a slanted box,
+and the determinant is the signed volume of that box. In $\R^n$ it is the
+signed $n$-dimensional volume of the image of the unit cube. For a
+$3 \times 3$ matrix it can be computed by \emph{expanding along the first
+row}: each entry of that row multiplies the $2 \times 2$ determinant left
+over after deleting its row and column, with alternating signs,
+\[
+  \det \begin{bmatrix}
+    a_{11} & a_{12} & a_{13} \\
+    a_{21} & a_{22} & a_{23} \\
+    a_{31} & a_{32} & a_{33}
+  \end{bmatrix}
+  = a_{11} \det \begin{bmatrix} a_{22} & a_{23} \\ a_{32} & a_{33}
+    \end{bmatrix}
+  - a_{12} \det \begin{bmatrix} a_{21} & a_{23} \\ a_{31} & a_{33}
+    \end{bmatrix}
+  + a_{13} \det \begin{bmatrix} a_{21} & a_{22} \\ a_{31} & a_{32}
+    \end{bmatrix}.
+\]
+For example,
+\[
+  \det \begin{bmatrix} 2 & 0 & 1 \\ 1 & 3 & 2 \\ 0 & 1 & 1 \end{bmatrix}
+  = 2(3 - 2) - 0(1 - 0) + 1(1 - 0) = 3 .
+\]
+The same expansion works in any dimension, reducing an $n \times n$
+determinant to $n$ determinants of size $n - 1$. Carried all the way
+down, that takes about $n!$ operations, which is hopeless beyond tiny
+matrices. Libraries instead reduce the matrix to triangular form by
+elimination, in about $n^3$ operations, and use the fact below that a
+triangular determinant is the product of its diagonal.
+
+We will rarely compute a determinant by hand. What matters are its
+properties, each of which follows from the picture of volume scaling.
+For $n \times n$ matrices $A$ and $B$:
+\begin{itemize}
+  \item $\det I_n = 1$: doing nothing scales nothing.
+  \item $\det(AB) = \det A \cdot \det B$. Applying $B$ scales volumes by
+    $\det B$, and applying $A$ afterward scales them again by $\det A$.
+  \item $\det A^\top = \det A$, so everything said about columns holds
+    for rows too.
+  \item The determinant of a diagonal or triangular matrix is the product
+    of its diagonal entries. So $\det \operatorname{diag}(2, 0.5) = 1$,
+    and every shear $\bigl[\begin{smallmatrix} 1 & s \\ 0 & 1
+    \end{smallmatrix}\bigr]$ has determinant $1$.
+  \item Rotations have determinant $1$ and reflections have determinant
+    $-1$: neither changes volume, but a reflection reverses orientation.
+  \item Swapping two columns changes the sign, and if one column is a
+    combination of the others, the determinant is $0$.
+  \item $\det(cA) = c^n \det A$, not $c \det A$: scaling by $c$ stretches
+    each of the $n$ directions by $c$.
+\end{itemize}
+
+The product rule is the most useful of these. In
+\Cref{ex:ch03-noncommute}, $\det R = 1$ and $\det S = 2$, so both $SR$ and
+$RS$ have determinant $2$, even though they are different matrices. The
+order of a product matters, but not for how much it scales volume.
+
+\begin{warning}
+  The determinant is \emph{not} additive: in general
+  $\det(A + B) \ne \det A + \det B$. With $A = I_2$ and $B = -I_2$, the
+  left side is $\det 0 = 0$ and the right side is $1 + 1 = 2$.
+\end{warning}
+
+\subsection{The Determinant and the Inverse}
+\label{sec:ch03-det-inverse}
+
+A transformation that flattens space cannot be undone: as the projection
+showed in \Cref{sec:ch03-plane-examples}, different inputs land on the
+same output, and nothing can tell them apart afterward. A transformation
+that does not flatten space can be undone. The matrix that undoes $A$ is
+its \emph{inverse} $A^{-1}$, defined by
+\[
+  A^{-1} A = A A^{-1} = I_n .
+\]
+A square matrix with an inverse is \emph{invertible}, and the
+determinant tells us which ones are.
+
+\begin{proposition}[Invertibility]
+  \label{prop:ch03-invertible}
+  A square matrix $A$ is invertible exactly when $\det A \ne 0$. In that
+  case $\det(A^{-1}) = 1 / \det A$.
+\end{proposition}
+
+The second statement follows from the product rule:
+$\det A \cdot \det(A^{-1}) = \det(AA^{-1}) = \det I = 1$. This is also
+why a matrix with $\det A = 0$ cannot have an inverse, since no number
+times $0$ equals $1$. For a $2 \times 2$ matrix the inverse has a short
+formula, which you can check by multiplying out:
+\begin{equation}
+  \begin{bmatrix} a & b \\ c & d \end{bmatrix}^{-1}
+  = \frac{1}{ad - bc}
+    \begin{bmatrix} d & -b \\ -c & a \end{bmatrix}.
+  \label{eq:ch03-inverse-2x2}
+\end{equation}
+Swap the diagonal, negate the off-diagonal, and divide by the
+determinant. The division fails precisely when the determinant is zero.
+
+\begin{example}
+  \label{ex:ch03-inverse}
+  The matrix of \Cref{ex:ch03-matvec} has $\det A = 2 \cdot 1 - (-1)
+  \cdot 1 = 3$, so
+  \[
+    A = \begin{bmatrix} 2 & -1 \\ 1 & 1 \end{bmatrix}, \qquad
+    A^{-1} = \frac{1}{3} \begin{bmatrix} 1 & 1 \\ -1 & 2 \end{bmatrix}.
+  \]
+  In \Cref{ex:ch03-matvec}, $A$ sent $\vect{x} = (1, 2)$ to $(0, 3)$, and
+  indeed $A^{-1}(0, 3) = \tfrac{1}{3}(3, 6) = (1, 2)$. The inverse shrinks
+  areas by a factor of $3$, undoing the tripling in
+  \Cref{fig:ch03-det-signs}(a).
+\end{example}
+
+Inverting a product reverses the order, $(AB)^{-1} = B^{-1} A^{-1}$, for
+the same reason as for the transpose: to undo ``apply $B$, then $A$,''
+first undo $A$, then undo $B$.
+
+\begin{tip}
+  To solve $A\vect{x} = \vect{b}$, do not compute $A^{-1}$ and multiply.
+  Calling a solver, \texttt{np.linalg.solve(A, b)}, is faster and more
+  accurate. The inverse is a useful idea on paper and rarely the right
+  thing to compute.
+\end{tip}
+
+\subsection{Determinants in AI}
+\label{sec:ch03-det-ai}
+
+Determinants seldom appear inside the forward pass of a network, but they
+appear wherever volumes and probability densities do.
+
+\paragraph{Changing variables in a density.}
+If a random vector $\vect{z}$ has a probability density and we transform
+it to $\vect{x} = A\vect{z}$, the probability in a small region is
+preserved but the region's volume is multiplied by $|\det A|$. So the
+density must be divided by the same factor:
+\[
+  p_{\vect{x}}(\vect{x}) = \frac{p_{\vect{z}}(A^{-1}\vect{x})}{|\det A|} .
+\]
+This is why the multivariate Gaussian density of \Cref{chap:ch06} has
+the determinant of its covariance matrix in its normalizing constant.
+
+\paragraph{Normalizing flows.}
+A \emph{normalizing flow} is a generative model that pushes simple noise
+$\vect{z}$ through a chain of invertible layers to produce data
+$\vect{x}$. To train it by maximum likelihood, it needs the density of
+each $\vect{x}$, and by the formula above a layer with matrix $W$ contributes the term
+$-\log |\det W|$ (for a nonlinear layer, $W$ is replaced by its matrix
+of derivatives). Flows are designed so that these determinants are cheap,
+for instance by making each layer's matrix triangular, so that the
+determinant is the product of the diagonal.
+
+\paragraph{Detecting lost information.}
+A layer whose weight matrix has determinant near zero nearly flattens its
+input, and different inputs become hard to tell apart. In practice,
+the singular values of \Cref{chap:ch04} are a better measure of this than
+the determinant, which, as the next subsection shows, is a poor
+numerical indicator on its own.
+
+\begin{aibox}
+  Libraries and papers almost always work with the \emph{log}-determinant
+  $\log |\det A|$ rather than $\det A$. The product rule becomes a sum,
+  $\log |\det(AB)| = \log |\det A| + \log |\det B|$, which fits naturally
+  into a log-likelihood, and for a triangular matrix it is just
+  $\sum_i \log |a_{ii}|$. It also avoids the overflow and underflow that
+  make raw determinants of large matrices useless.
+\end{aibox}
+
+\subsection{In Code: Determinants and Inverses}
+\label{sec:ch03-det-code}
+
+\texttt{np.linalg.det} computes the determinant and
+\texttt{np.linalg.inv} the inverse. Here they are on the examples of this
+section:
+
+\begin{lstlisting}
+A = np.array([[2.0, -1.0],
+              [1.0,  1.0]])
+
+np.linalg.det(A)                  # 2.9999999999999996, i.e. 3
+A_inv = np.linalg.inv(A)          # [[ 0.333, 0.333], [-0.333, 0.667]]
+A_inv @ np.array([0.0, 3.0])      # [1., 2.]
+np.allclose(A_inv @ A, np.eye(2)) # True
+
+M = np.array([[2.0, 0.0, 1.0],
+              [1.0, 3.0, 2.0],
+              [0.0, 1.0, 1.0]])
+np.linalg.det(M)                  # 2.9999999999999996
+\end{lstlisting}
+
+The results are off in the last digit because the library computes
+determinants by elimination in floating point, not by the exact formula.
+The properties of \Cref{sec:ch03-det-nd} are easy to check on random
+matrices:
+
+\begin{lstlisting}
+rng = np.random.default_rng(0)
+P = rng.standard_normal((3, 3))
+Q = rng.standard_normal((3, 3))
+det = np.linalg.det
+
+np.isclose(det(P @ Q), det(P) * det(Q))   # True
+np.isclose(det(P.T), det(P))              # True
+det(3 * A), 3**2 * det(A)                 # 27.0, 27.0: not 3 * det(A)
+np.linalg.solve(A, np.array([0.0, 3.0]))  # [1., 2.], without forming A_inv
+\end{lstlisting}
+
+\begin{warning}
+  A computed determinant is a poor test of whether a matrix is invertible.
+  The matrix $\bigl[\begin{smallmatrix} 1 & 2 \\ 3 & 6
+  \end{smallmatrix}\bigr]$ has a second column exactly twice the first,
+  but \texttt{np.linalg.det} returns about $-3.3 \times 10^{-16}$, not
+  $0$, because of rounding. In the other direction, $0.1 I_{400}$ is
+  perfectly invertible, yet its determinant $10^{-400}$ is too small for a
+  floating-point number and comes back as \texttt{0.0}. Size of the
+  determinant says nothing reliable about how close a matrix is to being
+  singular; \Cref{chap:ch04} gives a better measure, the condition number.
+\end{warning}
+
+For large matrices, use \texttt{np.linalg.slogdet}, which returns the
+sign and the log of the absolute value separately and never overflows:
+
+\begin{lstlisting}
+B = 0.1 * np.eye(400)
+np.linalg.det(B)                  # 0.0  (underflow)
+sign, logdet = np.linalg.slogdet(B)
+sign, logdet                      # 1.0, -921.03 = 400 * log(0.1)
+\end{lstlisting}
+
+PyTorch provides the same three functions under \texttt{torch.linalg},
+and all of them can be differentiated, which is what normalizing flows
+rely on.
+
 \section{Summary}
 \label{sec:ch03-summary}
 
@@ -1358,4 +1706,18 @@ multiply in the cheap order, and the gap widens as the matrices grow.
     $EE^\top$ and $QK^\top$ compute all pairwise inner products at once.
     In code, use \texttt{@} for these products; \texttt{*} multiplies
     entry by entry.
+  \item The \emph{determinant} is the factor by which a square matrix
+    scales areas and volumes, with a negative sign if it flips
+    orientation. For $2 \times 2$ matrices it is $ad - bc$. It satisfies
+    $\det(AB) = \det A \cdot \det B$ and $\det A^\top = \det A$, a
+    triangular matrix has the product of its diagonal as its determinant,
+    and $\det(cA) = c^n \det A$.
+  \item A matrix is \emph{invertible} exactly when $\det A \ne 0$, that
+    is, when it does not flatten space. Then $\det(A^{-1}) = 1 / \det A$
+    and $(AB)^{-1} = B^{-1} A^{-1}$. To solve $A\vect{x} = \vect{b}$, call
+    a solver instead of forming $A^{-1}$.
+  \item Determinants scale probability densities under a change of
+    variables, which is how normalizing flows compute likelihoods. In
+    code, work with \texttt{slogdet}, and do not judge how close a matrix
+    is to singular by the size of its determinant.
 \end{itemize}
