@@ -43,6 +43,12 @@
 \newtheorem{lemma}[theorem]{Lemma}
 \newtheorem{corollary}[theorem]{Corollary}
 
+% cleveref names shared-counter theorems after the counter ("Theorem");
+% alias each one back to its own name.
+\AddToHook{env/proposition/begin}{\crefalias{theorem}{proposition}}
+\AddToHook{env/lemma/begin}{\crefalias{theorem}{lemma}}
+\AddToHook{env/corollary/begin}{\crefalias{theorem}{corollary}}
+
 \theoremstyle{remark}
 \newtheorem*{remark}{Remark}
 

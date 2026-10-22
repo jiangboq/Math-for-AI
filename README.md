@@ -16,24 +16,22 @@ make clean  # remove build artifacts
 
 **Part I: Functions and Derivatives**
 1. Convex Functions
-2. Derivatives
-3. Partial Derivatives and Gradients
-4. The Chain Rule and Backpropagation
+2. Derivatives and Gradients
 
 **Part II: Linear Algebra**
-5. Vectors and Matrices
-6. Matrix Decompositions: Eigenvalues, SVD, and PCA
+3. Vectors and Matrices
+4. Matrix Decompositions: Eigenvalues, SVD, and PCA
 
 **Part III: Probability and Statistics**
-7. Probability Fundamentals
-8. Common Probability Distributions
-9. Statistics and Estimation: MLE and MAP
-10. Information Theory: Entropy, Cross-Entropy, and KL Divergence
+5. Probability Fundamentals
+6. Common Probability Distributions
+7. Statistics and Estimation: MLE and MAP
+8. Information Theory: Entropy, Cross-Entropy, and KL Divergence
 
 **Part IV: Optimization and Learning**
-11. Optimization: Gradient Descent to Adam
-12. Regularization and Generalization
-13. Putting It Together: The Math of Transformers
+9. Optimization: Gradient Descent to Adam
+10. Regularization and Generalization
+11. Putting It Together: The Math of Transformers
 
 ## Layout
 
