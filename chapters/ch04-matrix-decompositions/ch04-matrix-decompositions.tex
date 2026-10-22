@@ -1,4 +1,1505 @@
 \chapter{Matrix Decompositions: Eigenvalues, SVD, and PCA}
 \label{chap:ch04}
 
-\textit{Coming soon.}
+% Chapter goal: break a matrix into simple pieces (directions and
+% stretch factors) and use them to understand what the matrix does,
+% from gradient descent to PCA.
+
+A general matrix mixes its inputs in a way that is hard to read off from
+its entries. The matrix of \Cref{ex:ch03-matvec} stretched, turned, and
+skewed the unit square all at once (\Cref{fig:ch03-transforms}). This
+chapter finds the special directions in which a matrix acts simply, and
+uses them to take the matrix apart. The pieces explain why gradient
+descent slows down in narrow valleys, how far a deep network's signals
+can grow, and how to compress a dataset to its most important directions.
+
+\section{Eigenvalues and Eigenvectors}
+\label{sec:ch04-eigen}
+
+\subsection{Directions a Matrix Does Not Turn}
+\label{sec:ch04-eigen-def}
+
+Apply the symmetric matrix
+\[
+  A = \begin{bmatrix} 2 & 1 \\ 1 & 2 \end{bmatrix}
+\]
+to a few vectors. The basis vector $\vect{e}_1 = (1, 0)$ goes to
+$(2, 1)$, which points in a different direction. So does
+$\vect{e}_2 = (0, 1)$, which goes to $(1, 2)$. But two directions are
+special:
+\[
+  A \begin{bmatrix} 1 \\ 1 \end{bmatrix}
+  = \begin{bmatrix} 3 \\ 3 \end{bmatrix}
+  = 3 \begin{bmatrix} 1 \\ 1 \end{bmatrix},
+  \qquad
+  A \begin{bmatrix} -1 \\ 1 \end{bmatrix}
+  = \begin{bmatrix} -1 \\ 1 \end{bmatrix}
+  = 1 \begin{bmatrix} -1 \\ 1 \end{bmatrix}.
+\]
+Along the diagonal $(1, 1)$, the matrix only stretches, by a factor of
+$3$. Along the other diagonal $(-1, 1)$, it does nothing at all. In these
+two directions, multiplying by a matrix reduces to multiplying by a
+number.
+
+\begin{definition}[Eigenvalue and eigenvector]
+  \label{def:eigen}
+  Let $A$ be an $n \times n$ matrix. A nonzero vector $\vect{v}$ is an
+  \emph{eigenvector} of $A$ with \emph{eigenvalue} $\lambda$ if
+  \[
+    A\vect{v} = \lambda \vect{v} .
+  \]
+\end{definition}
+
+The prefix \emph{eigen} is German for ``own'': an eigenvector is a
+direction that belongs to the matrix. A few remarks on the definition:
+\begin{itemize}
+  \item Only square matrices have eigenvectors, since $A\vect{v}$ must
+    live in the same space as $\vect{v}$ for the two to be compared.
+  \item The vector $\vect{0}$ is excluded, because $A\vect{0} =
+    \lambda\vect{0}$ holds for every $\lambda$ and says nothing. The
+    eigenvalue, however, may be $0$.
+  \item Eigenvectors are really directions. If $\vect{v}$ is an
+    eigenvector, so is $c\vect{v}$ for any $c \ne 0$, with the same
+    eigenvalue, since $A(c\vect{v}) = cA\vect{v} = \lambda (c\vect{v})$.
+    We usually report the unit eigenvector, here
+    $\tfrac{1}{\sqrt2}(1, 1)$ and $\tfrac{1}{\sqrt2}(-1, 1)$, and its sign
+    is arbitrary.
+\end{itemize}
+
+\subsection{Geometric Interpretation}
+\label{sec:ch04-eigen-geometry}
+
+\Cref{fig:ch04-eigen} shows what $A$ does to the unit circle. Every
+vector on the circle is sent somewhere on an ellipse. Most vectors are
+both stretched and turned, as $\vect{e}_1$ is. The eigenvectors are the
+two directions that are not turned, and they are the axes of the ellipse:
+the long axis, of half-length $3$, lies along $(1, 1)$, and the short
+axis, of half-length $1$, along $(-1, 1)$.
+
+\begin{figure}[ht]
+  \centering
+  \begin{tikzpicture}[scale=1.3, >=stealth]
+    \draw[gray!25] (-2.6,-2.6) grid (2.6,2.6);
+    \draw[gray!60] (-2.6,0) -- (2.6,0);
+    \draw[gray!60] (0,-2.6) -- (0,2.6);
+    % image of the unit circle
+    \fill[blue!10, rotate=45] (0,0) ellipse [x radius=3, y radius=1];
+    \draw[blue!50!black, rotate=45] (0,0) ellipse [x radius=3, y radius=1];
+    \draw[dashed, gray!70!black] (0,0) circle (1);
+    % eigen directions
+    \draw[green!45!black, dotted, thick] (-2.5,-2.5) -- (2.5,2.5);
+    \draw[green!45!black, dotted, thick] (1.6,-1.6) -- (-1.6,1.6);
+    % a vector that turns
+    \draw[->, thick, gray!70!black] (0,0) -- (1,0)
+      node[below right, font=\small, fill=white, inner sep=1pt]
+      {$\vect{e}_1$};
+    \draw[->, very thick, orange!85!black] (0,0) -- (2,1)
+      node[right, font=\small] {$A\vect{e}_1 = (2, 1)$};
+    % eigenvectors
+    \draw[->, very thick, green!45!black] (0,0) -- (2.121,2.121)
+      node[right=3pt, font=\small, fill=white, inner sep=1pt]
+      {$A\vect{v}_1 = 3\vect{v}_1$};
+    \draw[->, thick, gray!70!black] (0,0) -- (0.707,0.707);
+    \node[gray!30!black, font=\small] at (0.3,0.78) {$\vect{v}_1$};
+    \draw[->, very thick, green!45!black] (0,0) -- (-0.707,0.707)
+      node[left=4pt, font=\small, fill=white, inner sep=1pt]
+      {$A\vect{v}_2 = \vect{v}_2$};
+  \end{tikzpicture}
+  \caption{The matrix $A = \bigl[\begin{smallmatrix} 2 & 1 \\ 1 & 2
+    \end{smallmatrix}\bigr]$ maps the unit circle (dashed) onto an ellipse
+    (blue). A typical vector such as $\vect{e}_1$ is turned as well as
+    stretched. The eigenvectors $\vect{v}_1 = \tfrac{1}{\sqrt2}(1, 1)$ and
+    $\vect{v}_2 = \tfrac{1}{\sqrt2}(-1, 1)$ (green) keep their direction and
+    are scaled by their eigenvalues $3$ and $1$; they point along the axes
+    of the ellipse.}
+  \label{fig:ch04-eigen}
+\end{figure}
+
+The eigenvalue says what happens along its eigenvector:
+\begin{itemize}
+  \item $\lambda > 1$: vectors in that direction are stretched;
+  \item $0 < \lambda < 1$: they shrink;
+  \item $\lambda < 0$: they flip to point the opposite way, and are
+    stretched or shrunk by $|\lambda|$;
+  \item $\lambda = 0$: they are crushed to $\vect{0}$. A matrix with a zero
+    eigenvalue loses information, because $A\vect{v} = \vect{0} =
+    A\vect{0}$ means two different inputs give the same output.
+\end{itemize}
+
+\paragraph{Eigenvectors of familiar transformations.}
+The transformations of \Cref{sec:ch03-plane-examples} show the range of
+possibilities, summarized in \Cref{tab:ch04-eigen-examples}. For the
+scaling $\operatorname{diag}(2, 0.5)$, the axes themselves are the
+eigenvectors, with eigenvalues $2$ and $0.5$: a diagonal matrix lists its
+eigenvalues on its diagonal. The reflection $\operatorname{diag}(-1, 1)$
+flips $\vect{e}_1$ ($\lambda = -1$) and leaves $\vect{e}_2$ alone
+($\lambda = 1$). The projection onto the horizontal axis keeps
+$\vect{e}_1$ ($\lambda = 1$) and crushes $\vect{e}_2$ ($\lambda = 0$),
+which is exactly the information it loses.
+
+Two of the examples break the pattern. The shear
+$\bigl[\begin{smallmatrix} 1 & 1 \\ 0 & 1 \end{smallmatrix}\bigr]$ tips every
+vector except those along $\vect{e}_1$, so it has only one eigenvector
+direction, with $\lambda = 1$; there are not enough eigenvectors to
+describe the whole plane. A rotation by any angle other than $0^\circ$ or
+$180^\circ$ turns \emph{every} vector, so it has no eigenvectors at all.
+Neither problem can occur for symmetric matrices, as
+\Cref{sec:ch04-symmetric} explains.
+
+\begin{table}[ht]
+  \centering
+  \caption{Eigenvalues and eigenvectors of some $2 \times 2$ matrices.}
+  \label{tab:ch04-eigen-examples}
+  \begin{tabular}{@{}llll@{}}
+    \toprule
+    Transformation & Matrix & Eigenvalues & Eigenvectors \\
+    \midrule
+    Scaling & $\operatorname{diag}(2, 0.5)$ & $2$, $0.5$
+      & $\vect{e}_1$, $\vect{e}_2$ \\
+    Reflection & $\operatorname{diag}(-1, 1)$ & $-1$, $1$
+      & $\vect{e}_1$, $\vect{e}_2$ \\
+    Projection & $\operatorname{diag}(1, 0)$ & $1$, $0$
+      & $\vect{e}_1$, $\vect{e}_2$ \\
+    Shear & $\bigl[\begin{smallmatrix} 1 & 1 \\ 0 & 1
+      \end{smallmatrix}\bigr]$ & $1$ (twice) & $\vect{e}_1$ only \\
+    Rotation by $90^\circ$ & $\bigl[\begin{smallmatrix} 0 & -1 \\ 1 & 0
+      \end{smallmatrix}\bigr]$ & none & none \\
+    Symmetric example & $\bigl[\begin{smallmatrix} 2 & 1 \\ 1 & 2
+      \end{smallmatrix}\bigr]$ & $3$, $1$ & $(1, 1)$, $(-1, 1)$ \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\paragraph{Repeated multiplication.}
+Eigenvectors make repeated multiplication easy. If $A\vect{v} =
+\lambda\vect{v}$, then $A^2\vect{v} = A(\lambda\vect{v}) =
+\lambda^2\vect{v}$, and in general
+\[
+  A^k \vect{v} = \lambda^k \vect{v} .
+\]
+For any other vector, write it as a combination of eigenvectors and apply
+this to each piece. With the matrix $A$ above, $\vect{e}_1 = \tfrac12 (1,
+1) + \tfrac12 (1, -1)$, so
+\[
+  A^k \vect{e}_1
+  = \tfrac12\, 3^k \begin{bmatrix} 1 \\ 1 \end{bmatrix}
+  + \tfrac12\, 1^k \begin{bmatrix} 1 \\ -1 \end{bmatrix}
+  = \frac12 \begin{bmatrix} 3^k + 1 \\ 3^k - 1 \end{bmatrix}.
+\]
+The iterates $(1, 0), (2, 1), (5, 4), (14, 13), (41, 40), \dots$ swing
+toward the direction $(1, 1)$, because the component along the
+eigenvector with the largest $|\lambda|$ grows fastest and soon dominates.
+This is the idea behind \emph{power iteration}: multiply any starting
+vector by $A$ over and over, normalizing as you go, and it lines up with
+the \emph{dominant} eigenvector. More generally, the size of $A^k\vect{x}$
+over many steps is governed by the eigenvalues: components with
+$|\lambda| > 1$ explode, and components with $|\lambda| < 1$ die out.
+
+\begin{aibox}
+  A recurrent neural network applies the same weight matrix $W$ at every
+  time step, so signals and gradients passed back through $k$ steps are
+  multiplied by something like $W^k$. If the largest $|\lambda|$ is above
+  $1$, they explode; if it is below $1$, they vanish, and the network
+  cannot learn long-range dependencies. This \emph{exploding and vanishing
+  gradient problem} motivated LSTMs, careful initialization schemes, and
+  gradient clipping. Google's original PageRank algorithm ranked web pages
+  by the dominant eigenvector of the web's link matrix, computed with
+  power iteration.
+\end{aibox}
+
+\paragraph{Eigenvalues and gradient descent.}
+In \Cref{sec:ch02-gd-multi}, gradient descent on $x_1^2 + 3x_2^2$ needed
+a step size below $1/3$, because each coordinate was multiplied by its
+own factor, $1 - 2\eta$ or $1 - 6\eta$, at every step. Eigenvalues explain
+what happens when the valley is not lined up with the axes. Take
+$f(\vect{x}) = \vect{x}^\top A \vect{x} = 2x_1^2 + 2x_1 x_2 + 2x_2^2$, whose
+gradient is $\nabla f(\vect{x}) = 2A\vect{x}$. One step of gradient
+descent is
+\[
+  \vect{x} \leftarrow \vect{x} - 2\eta A\vect{x} = (I - 2\eta A)\,\vect{x} ,
+\]
+a multiplication by the matrix $I - 2\eta A$. Its eigenvectors are those
+of $A$, with eigenvalues $1 - 2\eta\lambda$, that is, $1 - 6\eta$ along
+$(1, 1)$ and $1 - 2\eta$ along $(-1, 1)$. This is the same pair of factors
+as before, now acting along the eigenvectors instead of the coordinate
+axes. The level curves of $f$ are ellipses whose axes are the
+eigenvectors, the steep direction has the large eigenvalue, and the step
+size must again satisfy $\eta < 1/3$. In general, the largest eigenvalue
+of the matrix of second derivatives sets the largest stable learning
+rate, and the ratio of the largest to the smallest eigenvalue measures
+how slowly gradient descent crawls along the flat directions.
+
+\subsection{Finding Eigenvalues}
+\label{sec:ch04-eigen-compute}
+
+Rewrite $A\vect{v} = \lambda\vect{v}$ as
+\[
+  (A - \lambda I)\,\vect{v} = \vect{0} .
+\]
+We are looking for a nonzero $\vect{v}$ that the matrix $A - \lambda I$
+sends to $\vect{0}$. As we saw with the projection, this happens exactly
+when $A - \lambda I$ flattens the space onto something lower-dimensional
+and loses information. For a $2 \times 2$ matrix there is a simple test.
+The \emph{determinant}
+\[
+  \det \begin{bmatrix} a & b \\ c & d \end{bmatrix} = ad - bc
+\]
+is the factor by which the matrix scales areas, with a negative sign if
+it reverses orientation. For example, $\det A = 4 - 1 = 3$, and the
+ellipse in \Cref{fig:ch04-eigen} has area $3\pi$, three times that of
+the unit circle. A matrix that flattens the plane onto a line or a point
+gives everything zero area, so it has determinant $0$. The eigenvalues
+are therefore the solutions of the \emph{characteristic equation}
+\[
+  \det(A - \lambda I) = 0 .
+\]
+
+\begin{example}
+  \label{ex:ch04-eigen-2x2}
+  For $A = \bigl[\begin{smallmatrix} 2 & 1 \\ 1 & 2 \end{smallmatrix}\bigr]$,
+  \[
+    \det(A - \lambda I)
+    = \det \begin{bmatrix} 2 - \lambda & 1 \\ 1 & 2 - \lambda \end{bmatrix}
+    = (2 - \lambda)^2 - 1
+    = \lambda^2 - 4\lambda + 3
+    = (\lambda - 3)(\lambda - 1),
+  \]
+  so the eigenvalues are $\lambda = 3$ and $\lambda = 1$. To find the
+  eigenvector for $\lambda = 3$, solve $(A - 3I)\vect{v} = \vect{0}$:
+  \[
+    \begin{bmatrix} -1 & 1 \\ 1 & -1 \end{bmatrix}
+    \begin{bmatrix} v_1 \\ v_2 \end{bmatrix} = \vect{0}
+    \quad\Longrightarrow\quad v_1 = v_2 ,
+  \]
+  which gives the direction $(1, 1)$. The same steps for $\lambda = 1$
+  give $v_1 = -v_2$, the direction $(-1, 1)$.
+\end{example}
+
+For any $2 \times 2$ matrix, the characteristic equation is
+$\lambda^2 - (a + d)\lambda + (ad - bc) = 0$. The coefficient $a + d$ is
+the \emph{trace}, the sum of the diagonal entries, so
+\[
+  \lambda_1 + \lambda_2 = \operatorname{tr} A, \qquad
+  \lambda_1 \lambda_2 = \det A .
+\]
+Both facts hold for $n \times n$ matrices too: the eigenvalues add up to
+the trace and multiply to the determinant. They make quick checks: for
+our $A$, $3 + 1 = 4 = 2 + 2$ and $3 \cdot 1 = 3 = \det A$.
+
+For an $n \times n$ matrix, $\det(A - \lambda I)$ is a polynomial of
+degree $n$, so there are at most $n$ eigenvalues. Solving that
+polynomial is fine by hand for $n = 2$ and
+hopeless for the matrices of machine learning. Numerical libraries use
+iterative algorithms instead, such as the QR algorithm, which never form
+the polynomial at all. In practice, you compute eigenvalues with a library
+call, as in \Cref{sec:ch04-eigen-code}.
+
+\subsection{Symmetric Matrices}
+\label{sec:ch04-symmetric}
+
+The shear and the rotation show that a general matrix may have too few
+eigenvectors, or none at all. The matrices we meet most often in
+machine learning avoid both problems because they are \emph{symmetric}:
+$A^\top = A$. Covariance matrices of data, Gram matrices $EE^\top$ from
+\Cref{sec:ch03-matmul-ai}, and matrices of second derivatives are all
+symmetric.
+
+\begin{theorem}[Spectral theorem]
+  \label{thm:spectral}
+  A symmetric $n \times n$ matrix has $n$ eigenvalues, counted with
+  repetition, and a set of $n$ unit eigenvectors that are mutually
+  orthogonal.
+\end{theorem}
+
+We will not prove the whole theorem, but the orthogonality is easy to see.
+Suppose $A\vect{v} = \lambda\vect{v}$ and $A\vect{w} = \mu\vect{w}$ with
+$\lambda \ne \mu$. Using $A^\top = A$,
+\[
+  \lambda\, \vect{v}^\top \vect{w}
+  = (A\vect{v})^\top \vect{w}
+  = \vect{v}^\top A^\top \vect{w}
+  = \vect{v}^\top A \vect{w}
+  = \mu\, \vect{v}^\top \vect{w} ,
+\]
+so $(\lambda - \mu)\, \vect{v}^\top \vect{w} = 0$, which forces
+$\vect{v}^\top \vect{w} = 0$. Eigenvectors of a symmetric matrix with
+different eigenvalues are perpendicular, as $(1, 1)$ and $(-1, 1)$ are in
+\Cref{fig:ch04-eigen}.
+
+Geometrically, the theorem says that every symmetric matrix acts like the
+example in this section: there are $n$ perpendicular directions, and the
+matrix stretches or flips the space along each of them by its eigenvalue.
+The unit sphere becomes an ellipsoid whose axes are the eigenvectors. The
+next section turns this picture into a factorization of the matrix
+itself.
+
+\subsection{In Code: Computing Eigenvalues}
+\label{sec:ch04-eigen-code}
+
+NumPy computes eigenvalues and eigenvectors with \texttt{np.linalg.eig}.
+It returns the eigenvalues as a vector and the unit eigenvectors as the
+\emph{columns} of a matrix:
+
+\begin{lstlisting}
+import numpy as np
+
+A = np.array([[2.0, 1.0],
+              [1.0, 2.0]])
+
+eigvals, eigvecs = np.linalg.eig(A)
+eigvals                    # [3., 1.]
+eigvecs                    # [[0.7071, -0.7071],
+                           #  [0.7071,  0.7071]]
+
+v = eigvecs[:, 0]          # column 0, not row 0
+A @ v                      # [2.1213, 2.1213]
+eigvals[0] * v             # [2.1213, 2.1213]: A v = 3 v
+
+np.allclose(A @ eigvecs, eigvecs * eigvals)   # True: all pairs at once
+eigvals.sum(), eigvals.prod()   # 4.0, 3.0: trace and determinant
+\end{lstlisting}
+
+The last check uses broadcasting: \texttt{eigvecs * eigvals} multiplies
+column $j$ by \texttt{eigvals[j]}, so it compares $A\vect{v}_j$ with
+$\lambda_j\vect{v}_j$ for every $j$ in one line.
+
+\begin{note}
+  In NumPy 2.5 and later, \texttt{eig} prints its results with a trailing
+  \texttt{+0.j}, as in \texttt{3.+0.j} instead of \texttt{3.}. The extra
+  part is always zero for the matrices in this book and can be dropped
+  with \texttt{.real}. For a symmetric matrix, use
+  \texttt{np.linalg.eigh} instead, described next.
+\end{note}
+
+For symmetric matrices, \texttt{np.linalg.eigh} is faster and more
+accurate, returns plain floating-point numbers, and sorts the eigenvalues in
+increasing order. Its eigenvectors are orthonormal, so
+$V^\top V = I$:
+
+\begin{lstlisting}
+eigvals, V = np.linalg.eigh(A)
+eigvals                    # [1., 3.]: ascending
+V                          # [[-0.7071, 0.7071],
+                           #  [ 0.7071, 0.7071]]
+np.allclose(V.T @ V, np.eye(2))   # True: orthonormal columns
+\end{lstlisting}
+
+The signs differ from those returned by \texttt{eig}: $-\vect{v}$ is as
+good an eigenvector as $\vect{v}$, and libraries make no promise about
+which one you get. Code that compares eigenvectors across runs or
+libraries should allow for a sign flip.
+
+The shear of \Cref{tab:ch04-eigen-examples}, which has too few
+eigenvectors, shows up as an eigenvector that repeats:
+
+\begin{lstlisting}
+shear = np.array([[1.0, 1.0],
+                  [0.0, 1.0]])
+eigvals, eigvecs = np.linalg.eig(shear)
+eigvals                    # [1., 1.]
+eigvecs                    # [[1., -1.],
+                           #  [0.,  0.]]: both columns along e1
+\end{lstlisting}
+
+Power iteration takes only a few lines. Each step multiplies by $A$ and
+renormalizes; at the end, $\vect{x}^\top A \vect{x}$ estimates the
+eigenvalue, since $\vect{v}^\top A \vect{v} = \lambda\, \vect{v}^\top
+\vect{v} = \lambda$ for a unit eigenvector:
+
+\begin{lstlisting}
+def power_iteration(A, x0, num_iters=50):
+    x = x0 / np.linalg.norm(x0)
+    for _ in range(num_iters):
+        x = A @ x
+        x = x / np.linalg.norm(x)        # keep x at unit length
+    return x @ A @ x, x
+
+power_iteration(A, np.array([1.0, 0.0]))
+# (3.0, [0.7071, 0.7071])
+\end{lstlisting}
+
+Finally, the eigenvalues of $I - 2\eta A$ predict whether gradient
+descent on $f(\vect{x}) = \vect{x}^\top A \vect{x}$ converges, before we
+run it:
+
+\begin{lstlisting}
+for lr in [0.1, 0.25, 0.35]:
+    factors = np.linalg.eigvalsh(np.eye(2) - 2 * lr * A)
+    x = np.array([-2.5, 1.2])
+    for _ in range(50):
+        x = x - lr * 2 * A @ x           # gradient of x^T A x is 2 A x
+    print(lr, factors, x)
+# 0.1   [0.4, 0.8]    [0, 0]            converges
+# 0.25  [-0.5, 0.5]   [0, 0]            converges, zig-zagging
+# 0.35  [-1.1, 0.3]   [-76.3, -76.3]    diverges along (1, 1)
+\end{lstlisting}
+
+The run with $\eta = 0.35$ blows up along exactly the eigenvector whose
+factor $1 - 6\eta = -1.1$ has absolute value above $1$.
+
+\section{The Singular Value Decomposition}
+\label{sec:ch04-svd}
+
+Eigenvectors describe a matrix completely only when there are enough of
+them, which the spectral theorem guarantees for symmetric matrices and
+nothing guarantees in general. Most matrices in machine learning are not
+symmetric, and many are not even square: a data matrix has one row per
+example and one column per feature. The \emph{singular value
+decomposition} (SVD) extends the eigenvector picture to every matrix. We
+first turn \Cref{thm:spectral} into a factorization, and then see what
+changes when the matrix is not symmetric.
+
+\subsection{From Eigenvectors to a Factorization}
+\label{sec:ch04-eigendecomposition}
+
+Let $A$ be a symmetric $n \times n$ matrix with unit eigenvectors
+$\vect{q}_1, \dots, \vect{q}_n$, which by \Cref{thm:spectral} we can take
+to be mutually orthogonal, and eigenvalues $\lambda_1, \dots, \lambda_n$.
+Place the eigenvectors side by side as the columns of a matrix $Q$, and
+the eigenvalues on the diagonal of $\Lambda =
+\operatorname{diag}(\lambda_1, \dots, \lambda_n)$. By the column view of
+the matrix product, the $n$ equations $A\vect{q}_i = \lambda_i \vect{q}_i$
+say together that
+\[
+  AQ = Q\Lambda .
+\]
+The columns of $Q$ are orthonormal, so $Q^\top Q = I$: entry $(i, j)$ of
+$Q^\top Q$ is $\vect{q}_i^\top \vect{q}_j$, which is $1$ when $i = j$ and
+$0$ otherwise. A square matrix with this property is called
+\emph{orthogonal}. It also satisfies $QQ^\top = I$, so $Q^\top$ undoes
+$Q$ and $Q$ undoes $Q^\top$. Multiplying $AQ = Q\Lambda$ on the right by
+$Q^\top$ gives the \emph{eigendecomposition}
+\begin{equation}
+  A = Q \Lambda Q^\top .
+  \label{eq:ch04-eigendecomposition}
+\end{equation}
+
+An orthogonal matrix preserves inner products, $(Q\vect{x})^\top
+(Q\vect{y}) = \vect{x}^\top Q^\top Q \vect{y} = \vect{x}^\top \vect{y}$, and
+therefore lengths and angles. In the plane, that leaves only rotations
+and reflections. Reading \cref{eq:ch04-eigendecomposition} from right to
+left, as we read every product, multiplying by a symmetric matrix takes
+three steps:
+\begin{enumerate}
+  \item $Q^\top$ rotates the space so that the eigenvectors line up with
+    the coordinate axes ($Q^\top \vect{q}_i = \vect{e}_i$);
+  \item $\Lambda$ stretches each axis by its eigenvalue;
+  \item $Q$ rotates back, carrying each axis to its eigenvector.
+\end{enumerate}
+For the matrix of \Cref{sec:ch04-eigen},
+\[
+  \begin{bmatrix} 2 & 1 \\ 1 & 2 \end{bmatrix}
+  =
+  \underbrace{\frac{1}{\sqrt2}
+    \begin{bmatrix} 1 & -1 \\ 1 & 1 \end{bmatrix}}_{Q}
+  \underbrace{\begin{bmatrix} 3 & 0 \\ 0 & 1 \end{bmatrix}}_{\Lambda}
+  \underbrace{\frac{1}{\sqrt2}
+    \begin{bmatrix} 1 & 1 \\ -1 & 1 \end{bmatrix}}_{Q^\top} :
+\]
+rotate by $-45^\circ$, stretch the horizontal axis by $3$, rotate back by
+$45^\circ$. Every symmetric matrix is a stretch along perpendicular axes,
+seen from a rotated point of view.
+
+The same factorization can be written as a sum of outer products, by the
+outer-product view~\eqref{eq:ch03-outer} of the matrix product:
+\[
+  A = \lambda_1 \vect{q}_1 \vect{q}_1^\top + \dots
+    + \lambda_n \vect{q}_n \vect{q}_n^\top .
+\]
+Each term $\vect{q}_i \vect{q}_i^\top$ is the projection onto the direction
+$\vect{q}_i$, since $\vect{q}_i \vect{q}_i^\top \vect{x} = (\vect{q}_i^\top
+\vect{x})\, \vect{q}_i$. A symmetric matrix splits any input into its
+components along the eigenvectors and scales each by its eigenvalue.
+
+\subsection{Definition}
+\label{sec:ch04-svd-def}
+
+For a matrix that is not symmetric, or not square, we cannot hope to find
+directions that keep their direction: for an $m \times n$ matrix with
+$m \ne n$, $A\vect{v}$ is not even in the same space as $\vect{v}$. The SVD
+asks for less. Instead of one set of perpendicular directions, it uses
+two: perpendicular \emph{input} directions $\vect{v}_i$ that $A$ sends to
+perpendicular \emph{output} directions $\vect{u}_i$, scaled by a factor
+$\sigma_i \ge 0$:
+\begin{equation}
+  A\vect{v}_i = \sigma_i \vect{u}_i .
+  \label{eq:ch04-svd-pairs}
+\end{equation}
+Collecting these equations into matrices, exactly as we did for
+eigenvectors, gives the decomposition.
+
+\begin{theorem}[Singular value decomposition]
+  \label{thm:svd}
+  Every $m \times n$ matrix $A$ can be factored as
+  \[
+    A = U \Sigma V^\top ,
+  \]
+  where $U$ is an $m \times m$ orthogonal matrix, $V$ is an $n \times n$
+  orthogonal matrix, and $\Sigma$ is an $m \times n$ matrix that is zero
+  except for the entries $\sigma_1 \ge \sigma_2 \ge \dots \ge 0$ on its
+  diagonal.
+\end{theorem}
+
+The numbers $\sigma_i$ are the \emph{singular values} of $A$, the columns
+$\vect{u}_i$ of $U$ are its \emph{left singular vectors}, and the columns
+$\vect{v}_i$ of $V$ are its \emph{right singular vectors}. Unlike
+eigenvalues, singular values are never negative, and by convention they
+are sorted from largest to smallest. Since $\Sigma$ has the same shape as
+$A$, the shapes work out:
+\[
+  \underbrace{A}_{m \times n}
+  = \underbrace{U}_{m \times m}
+    \underbrace{\Sigma}_{m \times n}
+    \underbrace{V^\top}_{n \times n} .
+\]
+
+\paragraph{Where the SVD comes from.}
+The matrix $A^\top A$ is $n \times n$ and symmetric, since $(A^\top A)^\top
+= A^\top A$. If $A = U\Sigma V^\top$, then
+\[
+  A^\top A = V \Sigma^\top U^\top U \Sigma V^\top = V (\Sigma^\top \Sigma)
+  V^\top ,
+\]
+which is an eigendecomposition: the right singular vectors $\vect{v}_i$ are
+the eigenvectors of $A^\top A$, and the squared singular values
+$\sigma_i^2$ are its eigenvalues. This also shows how to build the SVD.
+Take the orthonormal eigenvectors $\vect{v}_i$ of $A^\top A$ given by the
+spectral theorem. Their eigenvalues are $\|A\vect{v}_i\|^2 =
+\vect{v}_i^\top A^\top A \vect{v}_i \ge 0$, so they have square roots
+$\sigma_i$. For each $\sigma_i > 0$, set $\vect{u}_i = A\vect{v}_i /
+\sigma_i$. These output directions are orthonormal too:
+\[
+  \vect{u}_i^\top \vect{u}_j
+  = \frac{\vect{v}_i^\top A^\top A \vect{v}_j}{\sigma_i \sigma_j}
+  = \frac{\sigma_j^2\, \vect{v}_i^\top \vect{v}_j}{\sigma_i \sigma_j} ,
+\]
+which is $1$ for $i = j$ and $0$ otherwise. If there are fewer than $m$ of
+them, fill out $U$ with any further orthonormal vectors; they are
+multiplied by zeros in $\Sigma$ and do not affect the product.
+
+\begin{example}
+  \label{ex:ch04-svd}
+  Take the matrix of \Cref{ex:ch03-matvec}, the last panel of
+  \Cref{fig:ch03-transforms}:
+  \[
+    A = \begin{bmatrix} 2 & -1 \\ 1 & 1 \end{bmatrix}, \qquad
+    A^\top A = \begin{bmatrix} 5 & -1 \\ -1 & 2 \end{bmatrix}.
+  \]
+  The characteristic equation of $A^\top A$ is $\lambda^2 - 7\lambda + 9 =
+  0$, with roots $\lambda = (7 \pm \sqrt{13})/2$, so the singular values
+  are their square roots,
+  \[
+    \sigma_1 = \frac{\sqrt{13} + 1}{2} \approx 2.303, \qquad
+    \sigma_2 = \frac{\sqrt{13} - 1}{2} \approx 1.303 .
+  \]
+  The corresponding unit eigenvectors of $A^\top A$ are
+  $\vect{v}_1 \approx (0.957, -0.290)$ and $\vect{v}_2 \approx (0.290,
+  0.957)$, and dividing $A\vect{v}_i$ by $\sigma_i$ gives
+  $\vect{u}_1 \approx (0.957, 0.290)$ and $\vect{u}_2 \approx (-0.290,
+  0.957)$. Both $V$ and $U$ turn out to be rotations by
+  $\theta \approx 16.8^\circ$, in opposite directions:
+  \[
+    A \approx
+    \underbrace{\begin{bmatrix} 0.957 & -0.290 \\ 0.290 & 0.957
+      \end{bmatrix}}_{U}
+    \underbrace{\begin{bmatrix} 2.303 & 0 \\ 0 & 1.303
+      \end{bmatrix}}_{\Sigma}
+    \underbrace{\begin{bmatrix} 0.957 & -0.290 \\ 0.290 & 0.957
+      \end{bmatrix}}_{V^\top} .
+  \]
+  Here $V^\top$ and $U$ happen to be the same rotation by $+16.8^\circ$.
+  As a check, $\sigma_1 \sigma_2 = (13 - 1)/4 = 3 = \det A$.
+\end{example}
+
+If $A$ is symmetric with nonnegative eigenvalues, as in
+\Cref{sec:ch04-eigendecomposition}, its SVD and its eigendecomposition
+coincide, with $U = V = Q$ and $\Sigma = \Lambda$. In general they differ,
+and the singular values are not the eigenvalues. The shear
+$\bigl[\begin{smallmatrix} 1 & 1 \\ 0 & 1 \end{smallmatrix}\bigr]$, for
+example, has the single eigenvalue $1$ but singular values $1.618$ and
+$0.618$: although it keeps one direction fixed, it stretches some vectors
+by more than half as much again and squeezes others.
+
+\subsection{Geometric Interpretation}
+\label{sec:ch04-svd-geometry}
+
+Reading $A = U\Sigma V^\top$ from right to left, every matrix acts in three
+steps (\Cref{fig:ch04-svd}):
+\begin{enumerate}
+  \item $V^\top$ rotates (or reflects) the input space so that the right
+    singular vectors $\vect{v}_i$ line up with the coordinate axes;
+  \item $\Sigma$ stretches axis $i$ by $\sigma_i$, and, if $m \ne n$, adds
+    or drops coordinates to change the dimension from $n$ to $m$;
+  \item $U$ rotates (or reflects) the output space, carrying axis $i$ to
+    the left singular vector $\vect{u}_i$.
+\end{enumerate}
+This is the claim made at the end of \Cref{sec:ch03-plane-examples}:
+however complicated a matrix looks, it is a rotation, a stretch along the
+axes, and another rotation. Only the middle step changes lengths, and it
+does so in the simplest possible way.
+
+\begin{figure}[ht]
+  \centering
+  \begin{tikzpicture}[scale=0.62, >=stealth]
+    \tikzset{
+      panelaxes/.style={gray!60},
+      stage/.style={->, thick, gray!70!black},
+      v1/.style={->, very thick, blue!60!black},
+      v2/.style={->, very thick, orange!85!black},
+    }
+    % (a) input: unit circle with right singular vectors
+    \begin{scope}
+      \draw[panelaxes] (-2.4,0) -- (2.4,0);
+      \draw[panelaxes] (0,-1.8) -- (0,1.8);
+      \fill[blue!10] (0,0) circle (1);
+      \draw[blue!50!black] (0,0) circle (1);
+      \draw[v1] (0,0) -- (0.957,-0.290) node[below right] {$\vect{v}_1$};
+      \draw[v2] (0,0) -- (0.290,0.957) node[above right] {$\vect{v}_2$};
+      \node[font=\small] at (0,-2.4) {(a) input};
+    \end{scope}
+    \draw[stage] (2.3,0.9) -- (3.7,0.9) node[midway, above] {$V^\top$};
+    % (b) after V^T: singular vectors on the axes
+    \begin{scope}[xshift=6cm]
+      \draw[panelaxes] (-2.4,0) -- (2.4,0);
+      \draw[panelaxes] (0,-1.8) -- (0,1.8);
+      \fill[blue!10] (0,0) circle (1);
+      \draw[blue!50!black] (0,0) circle (1);
+      \draw[v1] (0,0) -- (1,0) node[below right] {$\vect{e}_1$};
+      \draw[v2] (0,0) -- (0,1) node[above right] {$\vect{e}_2$};
+      \node[font=\small] at (0,-2.4) {(b) rotate};
+    \end{scope}
+    \draw[stage] (8.3,0.9) -- (9.7,0.9) node[midway, above] {$\Sigma$};
+    % (c) after Sigma: axis-aligned ellipse
+    \begin{scope}[xshift=12.2cm]
+      \draw[panelaxes] (-2.6,0) -- (2.6,0);
+      \draw[panelaxes] (0,-1.8) -- (0,1.8);
+      \fill[blue!10] (0,0) ellipse [x radius=2.303, y radius=1.303];
+      \draw[blue!50!black] (0,0) ellipse [x radius=2.303, y radius=1.303];
+      \draw[v1] (0,0) -- (2.303,0) node[below=2pt] {$\sigma_1 \vect{e}_1$};
+      \draw[v2] (0,0) -- (0,1.303) node[above right] {$\sigma_2 \vect{e}_2$};
+      \node[font=\small] at (0,-2.4) {(c) stretch};
+    \end{scope}
+    \draw[stage] (14.9,0.9) -- (16.3,0.9) node[midway, above] {$U$};
+    % (d) after U: rotated ellipse, the image of the circle under A
+    \begin{scope}[xshift=19cm]
+      \draw[panelaxes] (-2.6,0) -- (2.6,0);
+      \draw[panelaxes] (0,-1.8) -- (0,1.8);
+      \fill[blue!10, rotate=16.845] (0,0)
+        ellipse [x radius=2.303, y radius=1.303];
+      \draw[blue!50!black, rotate=16.845] (0,0)
+        ellipse [x radius=2.303, y radius=1.303];
+      \draw[v1] (0,0) -- (2.204,0.667) node[right] {$\sigma_1 \vect{u}_1$};
+      \draw[v2] (0,0) -- (-0.378,1.247) node[above] {$\sigma_2 \vect{u}_2$};
+      \node[font=\small] at (0,-2.4) {(d) rotate};
+    \end{scope}
+  \end{tikzpicture}
+  \caption{The SVD of $A = \bigl[\begin{smallmatrix} 2 & -1 \\ 1 & 1
+    \end{smallmatrix}\bigr]$ as three steps. (a) The unit circle and the
+    right singular vectors. (b) $V^\top$ rotates them onto the axes. (c)
+    $\Sigma$ stretches the axes by $\sigma_1 \approx 2.30$ and $\sigma_2
+    \approx 1.30$, turning the circle into an ellipse. (d) $U$ rotates the
+    ellipse into place. The result is the image of the unit circle under
+    $A$, with $A\vect{v}_i = \sigma_i \vect{u}_i$.}
+  \label{fig:ch04-svd}
+\end{figure}
+
+The picture gives each part of the SVD a meaning:
+\begin{itemize}
+  \item Any matrix maps the unit circle (or sphere) to an ellipse (or
+    ellipsoid). The singular values are the half-lengths of its axes, and
+    the left singular vectors $\vect{u}_i$ point along those axes.
+  \item The right singular vectors $\vect{v}_i$ are the input directions
+    that land on the axes. In \Cref{fig:ch04-svd}, $\vect{v}_1$ is the
+    direction that $A$ stretches the most, and $\vect{v}_2$ the one it
+    stretches the least.
+  \item So $\sigma_1$ is the largest factor by which $A$ can stretch any
+    vector: $\|A\vect{x}\| \le \sigma_1 \|\vect{x}\|$ for every $\vect{x}$,
+    with equality along $\vect{v}_1$. For a square matrix, the smallest
+    singular value is the smallest stretch, and the ratio
+    $\sigma_1 / \sigma_n$, the \emph{condition number}, measures how
+    unevenly the matrix treats different directions.
+  \item Areas scale by the product of the stretches: $|\det A| =
+    \sigma_1 \sigma_2$ for a $2 \times 2$ matrix, and $|\det A| =
+    \sigma_1 \cdots \sigma_n$ in general, since the rotations do not change
+    volume.
+\end{itemize}
+
+\paragraph{Rank.}
+Some singular values may be zero. If exactly $r$ of them are positive,
+then $\Sigma$ keeps $r$ coordinates and sets the rest to zero, so every
+output $A\vect{x}$ is a combination of $\vect{u}_1, \dots, \vect{u}_r$. The
+number $r$ is the \emph{rank} of $A$: the number of independent
+directions its outputs can take. The projection of
+\Cref{sec:ch03-plane-examples} has singular values $1$ and $0$, so its
+rank is $1$, and its outputs lie on a line. This is the precise version of
+the information loss we noticed there: the $n - r$ input directions
+$\vect{v}_{r+1}, \dots, \vect{v}_n$ are sent to $\vect{0}$, and nothing about
+them can be recovered from the output.
+
+\paragraph{A sum of rank-one pieces.}
+Dropping the terms with $\sigma_i = 0$ and using the outer-product view
+once more,
+\begin{equation}
+  A = \sigma_1 \vect{u}_1 \vect{v}_1^\top + \sigma_2 \vect{u}_2
+  \vect{v}_2^\top + \dots + \sigma_r \vect{u}_r \vect{v}_r^\top .
+  \label{eq:ch04-svd-sum}
+\end{equation}
+Each term $\vect{u}_i \vect{v}_i^\top$ is a matrix of rank one: it measures
+how far the input reaches along $\vect{v}_i$ and sends the answer out along
+$\vect{u}_i$. The SVD writes any matrix as a sum of these simplest
+possible pieces, sorted by importance, with $\sigma_i$ as the weight of
+piece $i$.
+
+\subsection{Keeping the Largest Singular Values}
+\label{sec:ch04-low-rank}
+
+The sum~\eqref{eq:ch04-svd-sum} suggests a way to compress a matrix: keep
+only the first $k$ terms,
+\[
+  A_k = \sigma_1 \vect{u}_1 \vect{v}_1^\top + \dots
+    + \sigma_k \vect{u}_k \vect{v}_k^\top .
+\]
+This is the \emph{truncated SVD}, a matrix of rank $k$. Storing it takes
+$k$ singular values and $k$ pairs of vectors, $k(m + n + 1)$ numbers
+instead of the $mn$ entries of $A$. To measure how much is lost, we use
+the \emph{Frobenius norm} $\|A\|_F = \sqrt{\sum_{i,j} a_{ij}^2}$, the norm
+of the matrix viewed as one long vector. Because $U$ and $V$ preserve
+lengths, it equals $\sqrt{\sigma_1^2 + \dots + \sigma_r^2}$.
+
+\begin{theorem}[Eckart--Young]
+  \label{thm:eckart-young}
+  Among all $m \times n$ matrices of rank at most $k$, the truncated SVD
+  $A_k$ is the closest to $A$ in the Frobenius norm, and
+  \[
+    \|A - A_k\|_F = \sqrt{\sigma_{k+1}^2 + \dots + \sigma_r^2} .
+  \]
+\end{theorem}
+
+The error is made of exactly the singular values we threw away. When the
+singular values fall off quickly, a small $k$ captures almost all of the
+matrix. Real data often looks like this: a few strong patterns plus a
+little noise. \Cref{fig:ch04-singular-values} shows the singular values of
+a $100 \times 50$ matrix built from three random patterns plus small
+random noise. Three singular values stand out, and the other $47$ are
+small and nearly equal, the signature of noise. Keeping $k = 3$ terms
+stores $453$ numbers instead of $5000$ and still reproduces the matrix to
+within about $5\%$. It even lands closer to the noise-free matrix than the
+noisy original does, because the discarded terms were mostly noise. The
+next section applies the same idea to a dataset, where the top singular
+vectors become its principal components.
+
+\begin{figure}[ht]
+  \centering
+  \begin{tikzpicture}
+    \begin{axis}[
+      width=0.62\textwidth, height=0.36\textwidth,
+      xmin=0, xmax=16, ymin=0, ymax=88,
+      xlabel={index $i$}, ylabel={$\sigma_i$},
+      xtick={1,3,5,10,15}, ytick={0,20,40,60,80},
+      tick label style={font=\footnotesize},
+      label style={font=\small},
+      axis lines=left,
+    ]
+      \addplot[ycomb, very thick, blue!60!black, mark=*,
+        mark size=1.8pt] coordinates {
+        (1,79.17) (2,66.29) (3,63.85)};
+      \addplot[ycomb, thick, gray!70, mark=*, mark size=1.5pt]
+        coordinates {
+        (4,1.61) (5,1.58) (6,1.50) (7,1.47) (8,1.39) (9,1.38) (10,1.33)
+        (11,1.31) (12,1.28) (13,1.26) (14,1.23) (15,1.20)};
+    \end{axis}
+  \end{tikzpicture}
+  \caption{The first $15$ singular values of a $100 \times 50$ matrix made
+    of three random patterns (a rank-$3$ matrix) plus small noise. The
+    three large singular values (blue) carry the patterns; the rest (gray)
+    are noise.}
+  \label{fig:ch04-singular-values}
+\end{figure}
+
+\begin{aibox}
+  Fine-tuning a large language model normally updates every entry of
+  every weight matrix. \emph{LoRA} (low-rank adaptation) instead freezes
+  each weight matrix $W$ and learns a low-rank update, $W + BA$, where $B$
+  is $d \times r$ and $A$ is $r \times d$ with a small rank $r$. For
+  $d = 4096$ and $r = 8$, the update has $2 \cdot 4096 \cdot 8 = 65{,}536$
+  parameters instead of $4096^2 \approx 16.8$ million, about $0.4\%$. The
+  method works because the changes needed to adapt a pretrained model to
+  a new task turn out to have most of their weight in a few singular
+  directions. The same reasoning lets truncated SVDs compress embedding
+  tables and the weight matrices of trained networks.
+\end{aibox}
+
+\subsection{In Code: Computing the SVD}
+\label{sec:ch04-svd-code}
+
+\texttt{np.linalg.svd} returns three arrays. Two details trip up almost
+everyone: the singular values come back as a one-dimensional array, not
+as the matrix $\Sigma$, and the third array is $V^\top$, not $V$.
+
+\begin{lstlisting}
+A = np.array([[2.0, -1.0],
+              [1.0,  1.0]])
+
+U, S, Vt = np.linalg.svd(A)
+S                          # [2.3028, 1.3028]: sorted, largest first
+U                          # [[-0.9571, -0.2898],
+                           #  [-0.2898,  0.9571]]
+Vt                         # [[-0.9571,  0.2898],   rows are v1, v2
+                           #  [ 0.2898,  0.9571]]
+
+np.allclose(U @ np.diag(S) @ Vt, A)        # True: A = U Sigma V^T
+np.allclose(A @ Vt[0], S[0] * U[:, 0])     # True: A v1 = sigma1 u1
+\end{lstlisting}
+
+Compared with \Cref{ex:ch04-svd}, NumPy has flipped the signs of both
+$\vect{u}_1$ and $\vect{v}_1$. Flipping a matching pair leaves
+$\sigma_1 \vect{u}_1 \vect{v}_1^\top$ unchanged, so both answers are
+correct. Because \texttt{Vt} holds $V^\top$, the right singular vectors
+are its \emph{rows}, while the left singular vectors are the
+\emph{columns} of \texttt{U}.
+
+\begin{warning}
+  Writing \texttt{U @ S @ Vt} fails or, worse, silently computes the wrong
+  thing, because \texttt{S} is a vector. Use \texttt{U @ np.diag(S) @ Vt},
+  or the broadcasting form \texttt{U * S @ Vt}, which scales column $i$ of
+  \texttt{U} by \texttt{S[i]}. And remember that the right singular
+  vectors are \texttt{Vt[i]}, not \texttt{Vt[:, i]}.
+\end{warning}
+
+The singular values are the square roots of the eigenvalues of
+$A^\top A$, and their product is $|\det A|$:
+
+\begin{lstlisting}
+np.sqrt(np.linalg.eigvalsh(A.T @ A))   # [1.3028, 2.3028]: ascending
+S.prod(), np.linalg.det(A)             # 3.0, 3.0
+\end{lstlisting}
+
+For a matrix that is not square, \texttt{full\_matrices=False} returns the
+compact form, which keeps only the first $\min(m, n)$ singular vectors on
+each side. These are the only ones the product uses:
+
+\begin{lstlisting}
+rng = np.random.default_rng(0)
+L = rng.standard_normal((100, 3)) @ rng.standard_normal((3, 50))  # rank 3
+M = L + 0.1 * rng.standard_normal((100, 50))   # plus small noise
+
+U, S, Vt = np.linalg.svd(M)
+U.shape, S.shape, Vt.shape     # (100, 100), (50,), (50, 50)
+
+U, S, Vt = np.linalg.svd(M, full_matrices=False)
+U.shape, S.shape, Vt.shape     # (100, 50), (50,), (50, 50)
+
+S[:5]                          # [79.2, 66.3, 63.8, 1.6, 1.6]
+np.linalg.matrix_rank(M)       # 50: noise makes every sigma nonzero
+\end{lstlisting}
+
+Finally, the truncated SVD. The error matches the Eckart--Young formula,
+and with $k = 3$ the approximation is closer to the noise-free matrix
+\texttt{L} than \texttt{M} itself is:
+
+\begin{lstlisting}
+def truncate(U, S, Vt, k):
+    return U[:, :k] * S[:k] @ Vt[:k]       # first k rank-one terms
+
+def rel_err(X, Y):
+    return np.linalg.norm(X - Y) / np.linalg.norm(Y)  # Frobenius
+
+for k in [1, 2, 3, 10]:
+    Mk = truncate(U, S, Vt, k)
+    print(k, rel_err(Mk, M), rel_err(Mk, L))
+# 1   0.759  0.758
+# 2   0.528  0.526
+# 3   0.055  0.018     three terms capture the patterns
+# 10  0.045  0.037     extra terms add back noise
+
+M3 = truncate(U, S, Vt, 3)
+np.linalg.norm(M - M3), np.sqrt((S[3:]**2).sum())   # equal
+rel_err(M, L)                  # 0.058: the noisy matrix is farther
+\end{lstlisting}
+
+For large matrices where only the top few singular values are needed,
+computing the full SVD is wasteful. \texttt{scipy.sparse.linalg.svds} and
+\texttt{sklearn.utils.extmath.randomized\_svd} compute just the leading
+$k$ terms, much faster.
+
+\section{Principal Component Analysis}
+\label{sec:ch04-pca}
+
+A dataset with $d$ features lives in $\R^d$, but its points rarely fill
+that space evenly. The pixels of a handwritten digit are strongly
+correlated with their neighbors, and the features of a house move
+together: bigger houses tend to have more bedrooms. Most of the variation
+in such data happens along a few directions. \emph{Principal component
+analysis} (PCA) finds those directions, so that we can describe each data
+point with a few numbers instead of $d$, plot high-dimensional data in two
+dimensions, or strip away the directions that carry mostly noise. It is
+the eigendecomposition of \Cref{sec:ch04-eigendecomposition} and the
+truncated SVD of \Cref{sec:ch04-low-rank}, applied to data.
+
+\subsection{Variance Along a Direction}
+\label{sec:ch04-pca-variance}
+
+Let the data be the $N \times d$ matrix $X$ whose rows
+$\vect{x}_1^\top, \dots, \vect{x}_N^\top$ are the data points. PCA cares
+about how the points spread around their center, not where the center
+is, so the first step is always to subtract the mean
+\[
+  \vect{\mu} = \frac{1}{N} \sum_{i=1}^N \vect{x}_i
+\]
+from every row. Write $\tilde{\vect{x}}_i = \vect{x}_i - \vect{\mu}$ for the
+centered points and $\tilde{X}$ for the centered data matrix, whose
+columns now each have mean zero.
+
+Pick a unit vector $\vect{w}$. The \emph{score} of point $i$ along
+$\vect{w}$ is $z_i = \vect{w}^\top \tilde{\vect{x}}_i$, the signed length
+of its projection onto the line through $\vect{w}$
+(\Cref{sec:ch03-geometry}). By the row view, all $N$ scores together are
+the vector $\vect{z} = \tilde{X}\vect{w}$. They have mean zero, and their
+variance, the average squared score, measures how spread out the data is
+along $\vect{w}$:
+\begin{equation}
+  \operatorname{Var}(\vect{z})
+  = \frac{1}{N - 1} \sum_{i=1}^N z_i^2
+  = \frac{1}{N - 1} \|\tilde{X}\vect{w}\|^2
+  = \vect{w}^\top \Bigl( \frac{\tilde{X}^\top \tilde{X}}{N - 1} \Bigr)
+    \vect{w} .
+  \label{eq:ch04-var-direction}
+\end{equation}
+Dividing by $N - 1$ rather than $N$ is the usual convention for the
+variance of a sample, and the reason for it is a topic of
+\Cref{chap:ch07}. It changes every variance by the same factor, so it has
+no effect on which directions PCA finds.
+
+The matrix in the middle of \cref{eq:ch04-var-direction} is the
+\emph{covariance matrix} of the data,
+\[
+  C = \frac{1}{N - 1}\, \tilde{X}^\top \tilde{X} .
+\]
+It is $d \times d$ and symmetric. By the entry-by-entry view of the
+product, its diagonal entry $c_{jj}$ is the variance of feature $j$, and
+the off-diagonal entry $c_{jk}$ is the \emph{covariance} of features $j$
+and $k$: positive when the two tend to be above their means together,
+negative when one tends to be high as the other is low.
+Equation~\eqref{eq:ch04-var-direction} says that the covariance matrix
+knows the spread of the data in every direction, not just along the
+coordinate axes: the variance along $\vect{w}$ is $\vect{w}^\top C
+\vect{w}$.
+
+\begin{example}
+  \label{ex:ch04-pca-data}
+  Take the five points $(7, 5)$, $(3, 1)$, $(6, 2)$, $(4, 4)$, and
+  $(5, 3)$. Their mean is $\vect{\mu} = (5, 3)$, and the centered points are
+  $(2, 2)$, $(-2, -2)$, $(1, -1)$, $(-1, 1)$, and $(0, 0)$. Then
+  \[
+    \tilde{X}^\top \tilde{X}
+    = \begin{bmatrix} 10 & 6 \\ 6 & 10 \end{bmatrix},
+    \qquad
+    C = \frac14 \begin{bmatrix} 10 & 6 \\ 6 & 10 \end{bmatrix}
+      = \begin{bmatrix} 2.5 & 1.5 \\ 1.5 & 2.5 \end{bmatrix}.
+  \]
+  Both features have variance $2.5$, and their covariance $1.5$ is
+  positive: the points lean along the diagonal. Along
+  $\vect{e}_1$ the variance is $\vect{e}_1^\top C \vect{e}_1 = 2.5$; along
+  the diagonal direction $\vect{w} = \frac{1}{\sqrt 2}(1, 1)$ it is
+  $\vect{w}^\top C \vect{w} = \frac12 (2.5 + 1.5 + 1.5 + 2.5) = 4$.
+\end{example}
+
+\subsection{Definition}
+\label{sec:ch04-pca-def}
+
+The \emph{first principal component} is the direction along which the data
+varies the most: the unit vector $\vect{w}$ that maximizes $\vect{w}^\top C
+\vect{w}$. Because $C$ is symmetric, the spectral theorem answers this
+question directly. Let $\lambda_1 \ge \dots \ge \lambda_d$ be the
+eigenvalues of $C$, with orthonormal eigenvectors $\vect{q}_1, \dots,
+\vect{q}_d$. Any unit vector can be written as $\vect{w} = c_1 \vect{q}_1 +
+\dots + c_d \vect{q}_d$ with $c_1^2 + \dots + c_d^2 = 1$, and then
+\[
+  \vect{w}^\top C \vect{w}
+  = \lambda_1 c_1^2 + \dots + \lambda_d c_d^2
+  \le \lambda_1 (c_1^2 + \dots + c_d^2) = \lambda_1 .
+\]
+The bound is reached at $\vect{w} = \vect{q}_1$. So the direction of
+greatest variance is the top eigenvector of the covariance matrix, and the
+variance along it is the top eigenvalue. Every eigenvalue of $C$ is a
+variance, so none is negative.
+
+Repeating the argument among the directions perpendicular to $\vect{q}_1$
+gives $\vect{q}_2$, and so on.
+
+\begin{definition}[Principal components]
+  \label{def:pca}
+  The \emph{principal components} of a dataset are the unit eigenvectors
+  $\vect{q}_1, \dots, \vect{q}_d$ of its covariance matrix $C$, ordered so
+  that their eigenvalues satisfy $\lambda_1 \ge \dots \ge \lambda_d$. The
+  eigenvalue $\lambda_j$ is the variance of the data along $\vect{q}_j$,
+  and the fraction
+  \[
+    \frac{\lambda_j}{\lambda_1 + \dots + \lambda_d}
+  \]
+  is the \emph{proportion of variance explained} by component $j$.
+\end{definition}
+
+The denominator is the total variance of the data, the sum of the
+variances of all the features: $\lambda_1 + \dots + \lambda_d =
+\operatorname{tr} C$, by the trace rule of
+\Cref{sec:ch04-eigen-compute}. The principal components share that total
+out among $d$ perpendicular directions, as unevenly as possible.
+
+To \emph{reduce} the data to $k$ dimensions, put the first $k$ principal
+components into the columns of a $d \times k$ matrix $W_k$ and compute the
+scores
+\[
+  \underbrace{Z}_{N \times k}
+  = \underbrace{\tilde{X}}_{N \times d} \; \underbrace{W_k}_{d \times k} .
+\]
+Row $i$ of $Z$ gives the $k$ coordinates of point $i$ along the principal
+components. To go back to the original features, map each point to its
+projection, $\hat{\vect{x}}_i = \vect{\mu} + W_k \vect{z}_i$, or for all
+points at once $\hat{X} = Z W_k^\top + \mathbf{1}\vect{\mu}^\top$.
+
+\begin{example}
+  \label{ex:ch04-pca}
+  The covariance matrix $C = \bigl[\begin{smallmatrix} 2.5 & 1.5 \\ 1.5 &
+  2.5 \end{smallmatrix}\bigr]$ of \Cref{ex:ch04-pca-data} has eigenvalues
+  $\lambda_1 = 2.5 + 1.5 = 4$ and
+  $\lambda_2 = 2.5 - 1.5 = 1$ along $\vect{q}_1 = \frac{1}{\sqrt2}(1, 1)$
+  and $\vect{q}_2 = \frac{1}{\sqrt2}(-1, 1)$, the same directions as the
+  matrix of \Cref{sec:ch04-eigen}. The first component explains
+  $4 / 5 = 80\%$ of the variance. The scores along $\vect{q}_1$ are
+  \[
+    \vect{z} = \tilde{X}\vect{q}_1
+    = (2\sqrt2,\ -2\sqrt2,\ 0,\ 0,\ 0)
+    \approx (2.83,\ -2.83,\ 0,\ 0,\ 0),
+  \]
+  whose variance is $(8 + 8)/4 = 4 = \lambda_1$, as promised. Keeping
+  only this component replaces each point by its projection
+  $\vect{\mu} + z_i \vect{q}_1$: the first two points stay where they are,
+  and the other three all move to the mean $(5, 3)$. The squared distance
+  lost, $2 + 2 + 0 = 4$, is $(N - 1)\lambda_2$, the variance of the
+  discarded component.
+\end{example}
+
+\paragraph{PCA through the SVD.}
+The covariance matrix is $\tilde{X}^\top \tilde{X}$ up to a constant, and
+\Cref{sec:ch04-svd-def} showed that the eigenvectors of $\tilde{X}^\top
+\tilde{X}$ are the right singular vectors of $\tilde{X}$. So if $\tilde{X} =
+U \Sigma V^\top$,
+\begin{itemize}
+  \item the principal components are the right singular vectors
+    $\vect{v}_j$ of the centered data;
+  \item the variances are $\lambda_j = \sigma_j^2 / (N - 1)$;
+  \item the scores are $Z = \tilde{X} V_k = U_k \Sigma_k$, the first $k$
+    columns of $U$ scaled by the singular values.
+\end{itemize}
+This is how PCA is computed in practice. It never forms $C$, which
+squares the singular values and can lose accuracy, and it works with a
+truncated SVD when only a few components are needed. It also brings in
+the Eckart--Young theorem: the reconstruction $\hat{X}$ from $k$ components
+is the best rank-$k$ approximation of the centered data, so no other
+choice of $k$ directions loses less.
+
+\subsection{Geometric Interpretation}
+\label{sec:ch04-pca-geometry}
+
+\Cref{fig:ch04-pca} shows a centered cloud of $60$ points. Its principal
+components are the axes of the elliptical cloud: $\vect{q}_1$ along the
+long axis, $\vect{q}_2$ along the short one. The arrows have length
+$2\sqrt{\lambda_j}$, twice the standard deviation in each direction, and
+the dashed ellipse with these half-lengths outlines where most points
+fall. This is the ellipse of \Cref{fig:ch04-eigen} again. The covariance
+matrix, like any symmetric matrix, describes an ellipse with its
+eigenvectors as axes, and here that ellipse is the shape of the data.
+
+\begin{figure}[ht]
+  \centering
+  \begin{tikzpicture}[scale=0.85, >=stealth]
+    % (a) cloud with principal axes
+    \begin{scope}
+      \draw[gray!60] (-3.6,0) -- (3.6,0);
+      \draw[gray!60] (0,-3.2) -- (0,2.6);
+      \draw[dashed, gray!60!black, rotate=32.33] (0,0)
+        ellipse [x radius=2.812, y radius=0.817];
+      \foreach \p in {
+          (0.31,0.69), (0.82,-0.24), (1.17,0.98), (-0.86,-0.12), (0.46,0.48), (-0.07,0.32),
+          (-0.95,-0.60), (-0.79,-0.07), (0.16,-0.04), (-0.99,-0.68), (0.11,-0.06), (1.57,1.53),
+          (-3.25,-2.93), (-0.10,-0.26), (0.27,0.32), (3.24,1.27), (-1.00,0.64), (0.76,0.86),
+          (-0.27,-1.07), (0.24,0.24), (-1.50,-1.22), (0.17,-0.41), (-0.13,0.02), (0.21,-0.13),
+          (0.63,0.92), (0.68,-0.04), (1.17,0.43), (1.52,0.30), (1.30,0.78), (-1.62,-1.08),
+          (0.04,0.22), (-1.05,-1.21), (0.43,0.02), (0.17,0.58), (-2.32,-1.15), (1.80,0.91),
+          (-1.28,-0.27), (0.16,0.65), (-0.08,-0.86), (-0.01,-0.22), (1.06,0.76), (-1.93,-1.76),
+          (1.09,1.06), (-0.85,-0.45), (0.53,0.62), (1.18,0.87), (-0.03,-0.13), (2.06,-0.07),
+          (-0.17,-0.04), (-2.03,-0.94), (-1.09,-0.09), (-0.31,0.25), (1.63,1.20), (-0.80,-1.30),
+          (2.49,1.41), (-0.96,-0.43), (-0.45,0.27), (0.08,0.09), (-1.08,-0.31), (-1.57,-0.48)} {
+        \fill[blue!55!black, opacity=0.75] \p circle (1.6pt);
+      }
+      \draw[->, very thick, orange!85!black] (0,0) -- (2.376,1.504)
+        node[above right, font=\small] {$2\sqrt{\lambda_1}\, \vect{q}_1$};
+      \draw[->, very thick, green!45!black] (0,0) -- (-0.437,0.691)
+        node[above left, font=\small] {$2\sqrt{\lambda_2}\, \vect{q}_2$};
+      \node[font=\small] at (0,-3.7) {(a) principal axes};
+    \end{scope}
+    % (b) projection onto the first component
+    \begin{scope}[xshift=8.2cm]
+      \draw[gray!60] (-3.6,0) -- (3.6,0);
+      \draw[gray!60] (0,-3.2) -- (0,2.6);
+      \draw[thick, orange!85!black] (-3.38,-2.14) -- (3.38,2.14)
+        node[above, font=\small] {$\vect{q}_1$};
+      \foreach \x/\y/\a/\b in {
+          0.31/0.69/0.53/0.34, 0.82/-0.24/0.47/0.30, 1.17/0.98/1.28/0.81, -0.86/-0.12/-0.67/-0.42,
+          0.46/0.48/0.55/0.35, -0.07/0.32/0.10/0.06, -0.95/-0.60/-0.95/-0.60, -0.79/-0.07/-0.59/-0.37,
+          0.16/-0.04/0.10/0.06, -0.99/-0.68/-1.01/-0.64, 0.11/-0.06/0.06/0.03, 1.57/1.53/1.81/1.15,
+          -3.25/-2.93/-3.65/-2.31, -0.10/-0.26/-0.19/-0.12, 0.27/0.32/0.34/0.22, 3.24/1.27/2.89/1.83,
+          -1.00/0.64/-0.43/-0.27, 0.76/0.86/0.93/0.59, -0.27/-1.07/-0.67/-0.43, 0.24/0.24/0.28/0.18,
+          -1.50/-1.22/-1.62/-1.03, 0.17/-0.41/-0.06/-0.04, -0.13/0.02/-0.08/-0.05, 0.21/-0.13/0.09/0.06,
+          0.63/0.92/0.87/0.55, 0.68/-0.04/0.47/0.30, 1.17/0.43/1.03/0.65, 1.52/0.30/1.22/0.77,
+          1.30/0.78/1.28/0.81, -1.62/-1.08/-1.64/-1.04, 0.04/0.22/0.13/0.08, -1.05/-1.21/-1.30/-0.82,
+          0.43/0.02/0.31/0.20, 0.17/0.58/0.38/0.24, -2.32/-1.15/-2.17/-1.38, 1.80/0.91/1.70/1.07,
+          -1.28/-0.27/-1.03/-0.65, 0.16/0.65/0.41/0.26, -0.08/-0.86/-0.44/-0.28, -0.01/-0.22/-0.11/-0.07,
+          1.06/0.76/1.10/0.70, -1.93/-1.76/-2.17/-1.38, 1.09/1.06/1.25/0.79, -0.85/-0.45/-0.82/-0.52,
+          0.53/0.62/0.66/0.42, 1.18/0.87/1.24/0.78, -0.03/-0.13/-0.08/-0.05, 2.06/-0.07/1.44/0.91,
+          -0.17/-0.04/-0.14/-0.09, -2.03/-0.94/-1.87/-1.18, -1.09/-0.09/-0.82/-0.52, -0.31/0.25/-0.11/-0.07,
+          1.63/1.20/1.70/1.08, -0.80/-1.30/-1.16/-0.73, 2.49/1.41/2.42/1.53, -0.96/-0.43/-0.88/-0.56,
+          -0.45/0.27/-0.20/-0.12, 0.08/0.09/0.10/0.06, -1.08/-0.31/-0.91/-0.57, -1.57/-0.48/-1.34/-0.85} {
+        \draw[gray!65] (\x,\y) -- (\a,\b);
+        \fill[blue!55!black, opacity=0.75] (\x,\y) circle (1.6pt);
+        \fill[orange!85!black] (\a,\b) circle (1.3pt);
+      }
+      \node[font=\small] at (0,-3.7) {(b) projection onto $\vect{q}_1$};
+    \end{scope}
+  \end{tikzpicture}
+  \caption{PCA of $60$ centered points. (a) The principal components are
+    the axes of the cloud; each arrow has length twice the standard
+    deviation along it, and the dashed ellipse has the same half-lengths.
+    (b) Reducing to one dimension replaces each point (blue) by its
+    projection onto the first component (orange). PCA chooses the line
+    that makes the projections as spread out as possible, which is the
+    same as making the gray segments as short as possible.}
+  \label{fig:ch04-pca}
+\end{figure}
+
+\paragraph{Most variance, least error.}
+Panel (b) shows two ways to describe the best line. For each centered
+point, the projection onto $\vect{w}$ and the leftover perpendicular piece
+form a right triangle, so by Pythagoras
+\[
+  \|\tilde{\vect{x}}_i\|^2
+  = \underbrace{(\vect{w}^\top \tilde{\vect{x}}_i)^2}_{\text{projection}}
+  + \underbrace{\|\tilde{\vect{x}}_i - (\vect{w}^\top \tilde{\vect{x}}_i)
+    \vect{w}\|^2}_{\text{squared distance to the line}} .
+\]
+The left side does not depend on $\vect{w}$. Summed over all points, a line
+that makes the projections large must make the distances small. Maximizing
+the variance of the projections and minimizing the total squared distance
+from the points to the line are the same problem, and PCA solves both.
+The second view is often the more useful one: PCA finds the
+$k$-dimensional flat surface through the mean that fits the data best.
+
+Notice that the distances are measured perpendicular to the line. This
+is not the line that linear regression fits, which minimizes vertical
+distances because it predicts one variable from the others. PCA treats all
+features alike and predicts none.
+
+\paragraph{A rotation of the coordinates.}
+Keeping all $d$ components, $Z = \tilde{X}Q$ is just the data written in
+new coordinates: since $Q$ is orthogonal, this rotates (or reflects) the
+cloud so that its principal axes line up with the coordinate axes. In
+the new coordinates the features are \emph{uncorrelated}. The covariance
+matrix of the scores is
+\[
+  \frac{1}{N - 1} Z^\top Z = Q^\top C\, Q = \Lambda ,
+\]
+which is diagonal: the variances $\lambda_j$ on the diagonal and zero
+covariance between any two components. Dimensionality reduction then
+simply drops the coordinates with the smallest variance.
+
+\paragraph{What PCA cannot see.}
+The geometric picture also shows PCA's limits.
+\begin{itemize}
+  \item \emph{It depends on units.} Variance is measured in the squared
+    units of each feature. In the house data of \Cref{sec:ch03-matrices},
+    areas in square meters vary far more than bedroom counts, so the
+    first component is almost exactly the area axis and explains $98.5\%$
+    of the variance. When features are measured in different units, divide
+    each by its standard deviation first, so that every feature has
+    variance $1$. Then the first component of the house data weighs all
+    three features about equally and explains $92.5\%$.
+  \item \emph{It finds flat structure only.} Points spread around a
+    circle or along a curved surface have no single best line or plane,
+    and PCA will report several components of similar size.
+  \item \emph{Large variance is not the same as importance.} PCA keeps the
+    directions in which the data varies most, which need not be the ones
+    that matter for a given prediction task.
+\end{itemize}
+
+\begin{aibox}
+  PCA is the first thing to try when looking at high-dimensional data. To
+  see how a model organizes its embeddings, project them onto their first
+  two principal components and plot them; clusters and directions such as
+  ``singular to plural'' can show up immediately. Researchers studying
+  the internals of neural networks run PCA on hidden activations for the
+  same reason, and nonlinear tools such as t-SNE and UMAP are usually run
+  on the top $50$ or so principal components rather than on the raw
+  data. Before deep learning, PCA was also a standard preprocessing step,
+  used to shrink inputs and remove noise before training a model.
+\end{aibox}
+
+\subsection{In Code: PCA from Scratch and with scikit-learn}
+\label{sec:ch04-pca-code}
+
+PCA takes a few lines on top of the SVD. The function returns the mean,
+the first $k$ principal components as the columns of \texttt{W}, and the
+variance along every component:
+
+\begin{lstlisting}
+def pca(X, k):
+    mu = X.mean(axis=0)
+    Xc = X - mu                                   # center the data
+    U, S, Vt = np.linalg.svd(Xc, full_matrices=False)
+    W = Vt[:k].T                                  # components as columns
+    var = S**2 / (len(X) - 1)                     # variance per component
+    return mu, W, var
+\end{lstlisting}
+
+On the five points of \Cref{ex:ch04-pca-data}:
+
+\begin{lstlisting}
+X = np.array([[7.0, 5.0], [3.0, 1.0], [6.0, 2.0],
+              [4.0, 4.0], [5.0, 3.0]])
+
+mu, W, var = pca(X, k=1)
+mu                         # [5., 3.]
+W                          # [[-0.7071], [-0.7071]]: q1, up to sign
+var                        # [4., 1.]
+var / var.sum()            # [0.8, 0.2]: proportion of variance
+
+Z = (X - mu) @ W           # scores: [[-2.83], [2.83], [0], [0], [0]]
+X_hat = Z @ W.T + mu       # [[7, 5], [3, 1], [5, 3], [5, 3], [5, 3]]
+((X - X_hat)**2).sum()     # 4.0: squared distance lost
+\end{lstlisting}
+
+The SVD has returned $-\vect{q}_1$, so the scores have the opposite sign
+from \Cref{ex:ch04-pca}; the projections \texttt{X\_hat} are unchanged.
+Going through the covariance matrix gives the same variances, in
+ascending order:
+
+\begin{lstlisting}
+C = np.cov(X, rowvar=False)        # rows are observations
+C                                  # [[2.5, 1.5], [1.5, 2.5]]
+np.linalg.eigvalsh(C)              # [1., 4.]
+\end{lstlisting}
+
+\begin{note}
+  \texttt{np.cov} assumes by default that each \emph{row} is a variable
+  and each column an observation, the opposite of the data-matrix
+  convention used in this book and in scikit-learn. Pass
+  \texttt{rowvar=False}, or you get an $N \times N$ matrix instead of a
+  $d \times d$ one.
+\end{note}
+
+\paragraph{A real dataset.}
+The digits dataset that ships with scikit-learn has $1797$ images of
+handwritten digits, each $8 \times 8$ pixels, flattened into vectors in
+$\R^{64}$ as in \Cref{sec:ch03-examples}. How many directions does the
+data really use?
+
+\begin{lstlisting}
+from sklearn.datasets import load_digits
+
+X = load_digits().data         # shape (1797, 64), pixel values 0 to 16
+mu, W, var = pca(X, k=2)
+
+ratio = var / var.sum()
+ratio[:5]                      # [0.149, 0.136, 0.118, 0.084, 0.058]
+np.cumsum(ratio)[[1, 9, 19, 29]]   # [0.285, 0.738, 0.894, 0.959]
+np.searchsorted(np.cumsum(ratio), 0.9) + 1    # 21 components for 90%
+
+Z = (X - mu) @ W               # shape (1797, 2): each image as 2 numbers
+\end{lstlisting}
+
+Twenty-one of the $64$ directions hold $90\%$ of the variance. Two hold
+only $28.5\%$, but even they separate the digits surprisingly well.
+\Cref{fig:ch04-digits} plots $300$ of the images by their two scores.
+Zeros, fours, and sixes form their own regions, and the overlapping groups
+in the middle are digits that look alike in a blurry $8 \times 8$
+picture.
+
+\begin{figure}[ht]
+  \centering
+  \colorlet{digit0}{blue!70!black}
+  \colorlet{digit1}{orange!85!black}
+  \colorlet{digit2}{green!50!black}
+  \colorlet{digit3}{red!75!black}
+  \colorlet{digit4}{violet!80!black}
+  \colorlet{digit5}{brown!80!black}
+  \colorlet{digit6}{magenta!75!black}
+  \colorlet{digit7}{gray!60!black}
+  \colorlet{digit8}{olive!85!black}
+  \colorlet{digit9}{cyan!60!black}
+  \begin{tikzpicture}[
+    digitlabel/.style={font=\scriptsize\bfseries\sffamily, inner sep=0pt}]
+    \begin{axis}[
+      width=0.72\textwidth, height=0.6\textwidth,
+      xmin=-34, xmax=34, ymin=-32, ymax=30,
+      xlabel={first principal component}, ylabel={second principal component},
+      tick label style={font=\footnotesize},
+      label style={font=\small},
+      axis lines=box,
+    ]
+      \foreach \x/\y/\d in {
+      -27.4/-3.8/4, 0.3/10.6/1, 17.2/-4.2/3, -10.3/23.6/1, 3.0/14.8/7, 13.1/-6.9/9,
+      -1.3/14.2/7, 8.7/-4.6/5, -4.2/-5.1/8, -8.3/5.3/1, -20.8/7.1/4, -17.3/-13.8/6,
+      -9.9/23.7/1, -1.7/12.0/5, 1.7/-22.7/0, 9.4/6.7/2, 7.2/-24.0/0, -17.5/-12.6/6,
+      -30.0/-8.0/4, 2.6/17.7/7, -18.4/15.0/4, 1.3/-1.0/5, 0.2/17.5/7, -6.3/11.3/7,
+      8.9/11.8/3, 12.9/11.1/2, 14.3/5.1/2, -3.8/-0.8/5, -28.2/-7.8/4, 6.8/3.5/8,
+      7.4/20.6/7, 2.6/-7.2/1, -20.8/-7.7/6, -8.5/1.4/5, -17.2/-9.6/6, 6.4/3.8/8,
+      11.5/4.3/2, 4.9/1.4/1, 1.9/7.3/5, 6.5/-12.6/9, -0.7/15.0/7, -6.3/7.3/2,
+      -25.2/-11.2/4, 15.4/12.4/2, 17.7/-5.2/3, -7.9/5.8/5, 15.9/1.4/3, -0.6/9.4/8,
+      -7.2/9.9/1, 8.7/-14.1/9, -5.7/10.4/7, 2.3/3.4/1, 0.3/-19.4/0, 2.2/13.3/7,
+      0.9/-22.7/0, 1.4/19.3/7, 23.2/6.5/3, -7.5/18.9/1, 1.3/14.5/7, -28.9/0.7/4,
+      -3.8/2.9/8, -3.4/12.0/8, -9.6/-10.6/0, 16.7/-14.0/5, 18.9/-12.7/9, 10.6/4.3/2,
+      -14.5/-13.9/6, 15.9/-15.0/5, -2.3/-18.2/0, -22.3/1.3/4, -8.7/13.3/7, -2.8/7.5/2,
+      -1.3/-3.2/5, -22.4/6.7/4, -20.5/-4.8/4, -10.9/9.2/1, -6.8/-20.9/0, -14.3/22.4/1,
+      9.5/8.6/2, -0.7/26.3/1, 21.9/-2.3/3, -21.3/-7.0/6, -19.0/-18.4/6, -10.2/18.5/1,
+      -5.0/-20.8/0, -14.6/-11.4/6, -0.1/18.6/8, -7.7/8.7/5, 16.8/9.0/3, -4.8/1.6/5,
+      13.8/6.6/3, -24.1/0.5/4, 5.4/-2.0/3, 7.1/-0.2/8, 12.4/8.6/2, -19.9/-8.2/6,
+      -7.6/10.9/1, 5.2/-2.5/1, -18.4/-13.5/6, 5.7/22.4/7, -14.4/-3.2/4, -1.7/8.3/7,
+      2.0/10.5/2, 19.5/-3.3/3, 12.8/-10.3/3, 8.6/-18.1/0, -8.1/-8.7/5, -14.1/-8.1/6,
+      -16.0/9.9/4, -2.5/10.5/1, 2.0/-6.3/5, 7.9/13.3/9, 11.7/-6.7/3, -7.9/8.4/5,
+      2.2/18.7/7, 8.1/21.4/7, 2.8/17.5/7, -14.8/17.5/1, -29.5/-6.8/4, -1.7/12.9/5,
+      -9.9/6.1/5, 1.3/-23.8/0, 10.1/5.6/2, 21.3/-1.8/3, 6.5/4.7/2, -4.9/18.1/8,
+      -1.7/13.3/8, -16.2/-10.2/6, -2.5/5.4/8, -20.2/6.1/4, -10.1/9.5/8, -17.3/1.5/4,
+      6.7/18.2/7, 4.3/2.7/2, 8.1/-4.4/8, 3.9/-2.9/2, -4.1/-18.3/0, 3.8/8.2/8,
+      5.7/-8.7/5, 7.7/19.2/9, 2.4/4.9/2, 3.9/10.7/5, -6.6/13.9/2, 10.2/-14.7/9,
+      -18.9/-6.0/6, -4.8/11.7/7, 1.2/21.3/7, 7.3/-6.2/1, -3.4/-11.4/5, -15.1/4.3/4,
+      13.9/-1.6/3, 20.1/-6.6/3, 8.3/-0.7/8, -14.4/-12.4/6, 14.6/2.6/2, -1.5/14.1/7,
+      12.3/-5.3/5, -6.5/15.9/1, 7.1/-2.6/8, 16.7/11.0/2, 18.0/-13.7/9, -13.5/-12.8/6,
+      1.6/0.2/1, -5.0/4.7/1, 7.6/-10.5/1, 18.1/2.9/3, 6.1/5.6/2, -14.6/7.9/1,
+      -10.4/6.8/8, 19.4/-11.2/9, 10.2/2.4/8, -29.5/-9.4/4, -0.8/17.4/7, -14.1/-16.9/6,
+      -14.7/-18.7/6, 12.6/11.9/2, 2.7/-22.6/0, 5.9/-1.2/8, 10.8/6.6/2, 19.1/-10.2/9,
+      13.9/-11.9/5, -2.6/-19.2/0, 3.5/11.7/8, 0.8/9.8/8, 1.9/7.0/1, -6.6/-23.5/0,
+      -15.6/-11.5/6, -2.6/-20.9/0, -3.9/-23.2/0, -6.7/-23.7/0, 3.1/13.9/7, -15.6/-6.4/6,
+      5.8/-0.2/5, 4.1/-8.4/9, -19.8/-11.1/6, -1.7/-18.9/0, 20.9/-3.1/3, -2.6/8.6/7,
+      8.2/-4.5/3, 9.0/-12.7/9, -17.4/-15.2/0, -19.4/-8.0/6, -23.3/10.4/4, -14.6/-9.4/0,
+      -4.8/5.2/7, -15.8/-17.2/6, -2.4/12.7/7, 3.5/-0.5/5, 23.3/12.9/3, -17.5/-4.6/4,
+      4.1/-0.8/9, -1.5/-1.4/2, -6.7/-22.4/0, -1.1/23.6/7, -21.0/-13.3/4, -4.9/-19.3/0,
+      -2.5/12.9/7, 6.0/2.9/2, 5.3/-1.2/8, -4.5/11.0/5, 11.4/-5.2/8, 2.7/6.9/2,
+      -4.9/20.4/7, -16.0/-15.2/6, -17.0/-17.2/6, 17.7/-14.6/9, -24.1/-6.1/6, 19.7/0.1/3,
+      -1.0/-2.6/9, 14.0/-5.2/9, 19.8/7.9/3, -2.6/25.3/1, -13.7/-6.7/4, 14.2/-5.8/3,
+      -12.0/-9.0/6, 1.8/-21.6/0, 27.9/-5.6/3, -5.5/9.5/7, 1.4/-22.2/0, -21.7/-7.2/6,
+      1.2/17.0/4, -0.5/-3.3/9, -25.1/4.1/4, 8.7/7.7/2, 0.9/-23.8/0, -1.3/5.8/1,
+      -4.1/16.2/7, -16.8/-8.0/6, 8.4/-6.2/9, -1.4/2.3/5, -5.5/-13.6/6, 14.1/-11.2/9,
+      4.5/21.5/5, 4.3/17.6/5, -3.4/4.8/5, 9.8/-1.4/2, -1.9/18.4/1, -14.7/-15.0/6,
+      9.2/-11.3/9, -18.8/-2.4/6, 0.9/-11.5/0, -8.9/21.1/7, -27.3/0.6/4, -4.3/15.6/8,
+      -3.9/19.6/7, 3.4/8.8/8, 1.3/-3.8/8, 21.0/-10.0/9, 2.5/4.0/8, 0.2/3.7/8,
+      -17.9/-15.6/6, -1.2/5.3/8, 0.8/9.2/1, 6.8/-10.7/1, -5.5/26.8/1, 9.9/4.9/2,
+      2.6/2.6/5, 3.7/2.3/2, -1.8/10.8/8, 3.2/11.3/9, 4.6/-23.0/0, 5.2/17.6/8,
+      -6.7/-12.1/5, 12.1/10.5/2, 3.7/15.0/8, -2.7/9.7/8, 22.2/-1.7/3, -13.6/-12.1/6,
+      19.4/-9.7/9, 24.8/-4.8/3, 2.5/-24.7/0, -24.4/2.9/4, 18.1/-12.1/9, -3.6/11.3/8,
+      -23.3/-4.3/4, -14.6/-17.1/6, -0.3/-20.0/0, -9.4/-0.9/6, -3.8/0.2/5, 6.0/11.2/5
+      } {
+        \edef\temp{\noexpand\node[digitlabel, text=digit\d]
+          at (axis cs:\x,\y) {\d};}
+        \temp
+      }
+    \end{axis}
+  \end{tikzpicture}
+  \caption{$300$ handwritten digits from scikit-learn's digits dataset,
+    each $64$-dimensional image placed at its scores on the first two
+    principal components and drawn as its label. The two directions
+    explain only $28.5\%$ of the variance, yet several digits already
+    occupy their own regions.}
+  \label{fig:ch04-digits}
+\end{figure}
+
+Reconstructing from $k$ components and measuring the error relative to
+the spread of the data shows the trade-off. By Eckart--Young, the error is
+exactly $\sqrt{1 - \text{(proportion of variance kept)}}$:
+
+\begin{lstlisting}
+for k in [2, 10, 21, 30]:
+    mu, W, var = pca(X, k)
+    X_hat = (X - mu) @ W @ W.T + mu
+    err = np.linalg.norm(X - X_hat) / np.linalg.norm(X - mu)
+    print(k, err)
+# 2   0.846
+# 10  0.512
+# 21  0.311
+# 30  0.202
+\end{lstlisting}
+
+In practice, use scikit-learn's \texttt{PCA}, which wraps the same SVD,
+picks consistent signs, and can choose $k$ for you from a target
+proportion of variance:
+
+\begin{lstlisting}
+from sklearn.decomposition import PCA
+
+pca2 = PCA(n_components=2).fit(X)
+pca2.explained_variance_           # [179.0, 163.7]: our var[:2]
+pca2.explained_variance_ratio_     # [0.149, 0.136]
+pca2.components_.shape             # (2, 64): components as ROWS
+Z = pca2.transform(X)              # centers, then projects
+
+PCA(n_components=0.9).fit(X).n_components_   # 21
+\end{lstlisting}
+
+Note that \texttt{components\_} stores the principal components as rows,
+like \texttt{Vt}, so it is the transpose of our \texttt{W}. When features
+are measured in different units, standardize them first, for example with
+\texttt{StandardScaler} from \texttt{sklearn.preprocessing}, as discussed in
+\Cref{sec:ch04-pca-geometry}.
+
+\section{Summary}
+\label{sec:ch04-summary}
+
+\begin{itemize}
+  \item An \emph{eigenvector} of a square matrix is a nonzero vector whose
+    direction the matrix does not change: $A\vect{v} = \lambda\vect{v}$.
+    The \emph{eigenvalue} $\lambda$ says whether vectors along it are
+    stretched, shrunk, flipped, or crushed to zero.
+  \item Repeated multiplication acts on eigenvectors as powers,
+    $A^k\vect{v} = \lambda^k\vect{v}$, so the eigenvalue of largest size
+    dominates over many steps. This drives power iteration, the exploding
+    and vanishing gradients of recurrent networks, and the step-size limit
+    of gradient descent, which is set by the largest eigenvalue of the
+    matrix of second derivatives.
+  \item Eigenvalues solve $\det(A - \lambda I) = 0$. They add up to the
+    trace and multiply to the determinant. In practice, compute them with
+    \texttt{np.linalg.eigh} for symmetric matrices, which returns them in
+    increasing order, and \texttt{np.linalg.eig} otherwise.
+  \item A general matrix may have too few eigenvectors, or none, but a
+    \emph{symmetric} matrix has $n$ orthogonal ones (the \emph{spectral
+    theorem}). It factors as $A = Q\Lambda Q^\top$: rotate, stretch along
+    the axes, rotate back.
+  \item Every matrix, of any shape, has a \emph{singular value
+    decomposition} $A = U\Sigma V^\top$, with orthogonal $U$ and $V$ and
+    singular values $\sigma_1 \ge \sigma_2 \ge \dots \ge 0$. It pairs input
+    directions with output directions, $A\vect{v}_i = \sigma_i\vect{u}_i$.
+    The $\vect{v}_i$ are eigenvectors of $A^\top A$, with eigenvalues
+    $\sigma_i^2$.
+  \item Geometrically, every matrix is a rotation, a stretch along the
+    axes, and another rotation. It maps the unit sphere to an ellipsoid
+    whose half-axes are $\sigma_i \vect{u}_i$; $\sigma_1$ is the largest
+    stretch, and the number of nonzero singular values is the
+    \emph{rank}.
+  \item The SVD writes a matrix as a sum of rank-one pieces
+    $\sigma_i \vect{u}_i \vect{v}_i^\top$. Keeping the $k$ largest gives the
+    best rank-$k$ approximation (Eckart--Young), with an error made of the
+    discarded singular values. This underlies compression, denoising, and
+    LoRA.
+  \item \emph{Principal component analysis} centers the data and finds the
+    directions of greatest variance: the eigenvectors of the covariance
+    matrix $C = \tilde{X}^\top\tilde{X}/(N - 1)$, or equivalently the right
+    singular vectors of the centered data. Eigenvalue $\lambda_j$ is the
+    variance along component $j$.
+  \item Projecting onto the first $k$ components keeps as much variance as
+    possible and, equivalently, minimizes the squared perpendicular
+    distance from the points to a $k$-dimensional flat surface. The new
+    coordinates are uncorrelated.
+  \item PCA depends on the units of the features, so standardize features
+    measured in different units. It finds only flat structure, and large
+    variance need not mean importance. In code, mind that
+    \texttt{np.linalg.svd} returns $V^\top$, and that both it and
+    scikit-learn's \texttt{PCA} store components as rows.
+\end{itemize}

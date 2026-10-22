@@ -1,4 +1,1361 @@
 \chapter{Vectors and Matrices}
 \label{chap:ch03}
 
-\textit{Coming soon.}
+% Chapter goal: vectors as the common format for data, parameters, and
+% embeddings; the inner product as the measure of alignment; and the
+% matrix as a function that moves vectors around.
+
+Everything a model touches is stored as an array of numbers. An input
+image, a word, the weights of a layer, and the gradient of the loss are
+all vectors or matrices, and nearly every operation a neural network
+performs is built from the two ideas in this chapter: the inner product of
+two vectors and the product of a matrix with a vector. We assume you have
+met vectors and matrices before, so instead of building them from scratch
+we focus on how to read them and what they do.
+
+\section{Vectors and the Inner Product}
+\label{sec:ch03-vectors}
+
+\subsection{Vectors Everywhere}
+\label{sec:ch03-examples}
+
+A vector in $\R^n$ is an ordered list of $n$ real numbers. We write vectors
+as columns,
+\[
+  \vect{x} =
+  \begin{bmatrix} x_1 \\ x_2 \\ \vdots \\ x_n \end{bmatrix},
+\]
+and, to save space in running text, as $\vect{x} = (x_1, \dots, x_n)$. The
+\emph{transpose} $\vect{x}^\top = [\, x_1 \ x_2 \ \cdots \ x_n \,]$ is the
+same numbers written as a row. Vectors of the same length add entry by
+entry, and multiplying by a number $c$ scales every entry:
+$\vect{x} + \vect{y} = (x_1 + y_1, \dots, x_n + y_n)$ and
+$c\vect{x} = (c x_1, \dots, c x_n)$.
+
+What makes vectors useful is not the definition but how many different
+things fit into it. \Cref{tab:ch03-vectors} lists vectors that appear
+throughout this book.
+
+\begin{table}[ht]
+  \centering
+  \caption{Some vectors in machine learning.}
+  \label{tab:ch03-vectors}
+  \begin{tabular}{@{}lll@{}}
+    \toprule
+    Object & Space & Entries \\
+    \midrule
+    A house for sale & $\R^3$ & area, bedrooms, age \\
+    A $28 \times 28$ grayscale image & $\R^{784}$ & pixel brightness \\
+    A word embedding & $\R^{768}$ & learned coordinates \\
+    A distribution over $10$ classes & $\Delta_{10} \subset \R^{10}$
+      & class probabilities \\
+    Parameters of a model & $\R^{d}$ & weights and biases \\
+    Gradient of the loss & $\R^{d}$ & one partial derivative per parameter \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+A few of these deserve a closer look.
+
+\paragraph{Feature vectors.}
+A house with an area of $120$ square meters, $3$ bedrooms, and an age of
+$15$ years becomes $\vect{x} = (120, 3, 15)$. Each entry is a
+\emph{feature}, and the order is a convention we must keep fixed: the
+second entry always means bedrooms. Tabular data of every kind is stored
+this way.
+
+\paragraph{Images.}
+A $28 \times 28$ grayscale image of a handwritten digit has $784$ pixels.
+Reading them row by row gives a vector in $\R^{784}$. The vector forgets
+which pixels were neighbors, which is one reason convolutional networks,
+which keep the grid, work better on images than models that see only the
+flat vector.
+
+\paragraph{Embeddings.}
+A language model cannot do arithmetic on the word ``cat'' directly, so it
+looks up a learned vector for it, its \emph{embedding}. A typical model
+uses a few hundred to a few thousand entries per token. No single entry
+has a human meaning; what matters is the geometry of the whole
+collection, in which related words end up pointing in similar directions.
+The inner product is how we measure that.
+
+\paragraph{Parameters and gradients.}
+In \Cref{chap:ch02}, the gradient $\nabla L(\vect{\theta})$ had one entry
+per parameter, so it lives in the same space $\R^d$ as the parameter
+vector $\vect{\theta}$. That is what makes the update
+$\vect{\theta} - \eta \nabla L(\vect{\theta})$ meaningful: it is a scaled
+vector subtracted from a vector of the same length.
+
+\subsection{The Inner Product}
+\label{sec:ch03-inner-product}
+
+\begin{definition}[Inner product]
+  \label{def:inner-product}
+  The \emph{inner product} (or \emph{dot product}) of
+  $\vect{x}, \vect{y} \in \R^n$ is the number
+  \[
+    \vect{x}^\top \vect{y} = x_1 y_1 + x_2 y_2 + \dots + x_n y_n
+    = \sum_{i=1}^n x_i y_i .
+  \]
+\end{definition}
+
+Multiply matching entries and add. Other common notations are
+$\vect{x} \cdot \vect{y}$ and $\langle \vect{x}, \vect{y} \rangle$; we use
+$\vect{x}^\top \vect{y}$ because it is a special case of the matrix
+products later in this chapter: a row times a column. For example, with
+$\vect{x} = (3, 1)$ and $\vect{y} = (1, 2)$,
+\[
+  \vect{x}^\top \vect{y} = 3 \cdot 1 + 1 \cdot 2 = 5 .
+\]
+
+The inner product follows the familiar rules of multiplication. For all
+vectors $\vect{x}, \vect{y}, \vect{z}$ of the same length and all numbers
+$c$:
+\begin{itemize}
+  \item it is \emph{symmetric}: $\vect{x}^\top \vect{y} = \vect{y}^\top
+    \vect{x}$;
+  \item it is \emph{linear} in each argument:
+    $\vect{x}^\top (\vect{y} + \vect{z}) = \vect{x}^\top \vect{y} +
+    \vect{x}^\top \vect{z}$ and $\vect{x}^\top (c \vect{y}) =
+    c\, \vect{x}^\top \vect{y}$;
+  \item it is \emph{positive}: $\vect{x}^\top \vect{x} = x_1^2 + \dots +
+    x_n^2 \ge 0$, with equality only for $\vect{x} = \vect{0}$.
+\end{itemize}
+
+The last property says that the inner product of a vector with itself is
+a sum of squares, which by Pythagoras is its squared length.
+
+\begin{definition}[Norm]
+  \label{def:norm}
+  The \emph{norm} (or \emph{length}) of $\vect{x} \in \R^n$ is
+  \[
+    \|\vect{x}\| = \sqrt{\vect{x}^\top \vect{x}}
+    = \sqrt{x_1^2 + \dots + x_n^2} .
+  \]
+  A vector with $\|\vect{x}\| = 1$ is a \emph{unit vector}.
+\end{definition}
+
+The distance between two points is the norm of their difference,
+$\|\vect{x} - \vect{y}\|$, which is the quantity that appeared in the
+strong convexity condition of \Cref{chap:ch01}. Dividing any nonzero
+vector by its norm gives the unit vector $\vect{x} / \|\vect{x}\|$ pointing
+the same way; this is called \emph{normalizing} $\vect{x}$.
+
+\subsection{The Geometry of the Inner Product}
+\label{sec:ch03-geometry}
+
+The inner product is not just a convenient formula. It measures how much
+two vectors point in the same direction.
+
+\begin{proposition}[Angle formula]
+  \label{prop:ch03-angle}
+  If $\theta$ is the angle between nonzero vectors $\vect{x}$ and
+  $\vect{y}$, then
+  \begin{equation}
+    \vect{x}^\top \vect{y} = \|\vect{x}\| \, \|\vect{y}\| \cos \theta .
+    \label{eq:ch03-angle}
+  \end{equation}
+\end{proposition}
+
+\begin{proof}
+  The vectors $\vect{x}$, $\vect{y}$, and $\vect{x} - \vect{y}$ form a
+  triangle. Expanding with the rules above,
+  \[
+    \|\vect{x} - \vect{y}\|^2
+    = (\vect{x} - \vect{y})^\top (\vect{x} - \vect{y})
+    = \|\vect{x}\|^2 + \|\vect{y}\|^2 - 2\, \vect{x}^\top \vect{y} .
+  \]
+  The law of cosines for the same triangle says
+  $\|\vect{x} - \vect{y}\|^2 = \|\vect{x}\|^2 + \|\vect{y}\|^2 -
+  2 \|\vect{x}\| \, \|\vect{y}\| \cos \theta$. Comparing the two gives the
+  formula.
+\end{proof}
+
+For $\vect{x} = (3, 1)$ and $\vect{y} = (1, 2)$, we have
+$\|\vect{x}\| = \sqrt{10}$, $\|\vect{y}\| = \sqrt{5}$, and so
+\[
+  \cos \theta = \frac{5}{\sqrt{10} \sqrt{5}} = \frac{1}{\sqrt 2},
+  \qquad \theta = 45^\circ ,
+\]
+as \Cref{fig:ch03-angle} shows.
+
+Since $\cos \theta$ lies between $-1$ and $1$, the sign of the inner
+product tells us the rough relation between two directions
+(\Cref{fig:ch03-sign}):
+\begin{itemize}
+  \item $\vect{x}^\top \vect{y} > 0$: the angle is less than $90^\circ$, and
+    the vectors point roughly the same way;
+  \item $\vect{x}^\top \vect{y} = 0$: the vectors are perpendicular, or
+    \emph{orthogonal};
+  \item $\vect{x}^\top \vect{y} < 0$: the angle is more than $90^\circ$, and
+    the vectors point roughly in opposite ways.
+\end{itemize}
+
+\begin{figure}[ht]
+  \centering
+  \begin{tikzpicture}[scale=1.15, >=stealth]
+    \draw[gray!30] (-0.4,-0.4) grid (3.4,2.4);
+    \draw[->, gray!70] (-0.4,0) -- (3.5,0);
+    \draw[->, gray!70] (0,-0.4) -- (0,2.5);
+    % projection of y onto x
+    \draw[dashed, gray!70!black] (1,2) -- (1.5,0.5);
+    \draw[gray!70!black] (1.358,0.453) -- (1.311,0.595) -- (1.453,0.642);
+    \draw[line width=2.2pt, green!45!black, opacity=0.6] (0,0) -- (1.5,0.5);
+    % angle
+    \draw[thick] (18.43:0.7) arc[start angle=18.43, end angle=63.43,
+      radius=0.7];
+    \node at (41:0.95) {$\theta$};
+    % vectors
+    \draw[->, very thick, blue!60!black] (0,0) -- (3,1)
+      node[right] {$\vect{x} = (3, 1)$};
+    \draw[->, very thick, orange!85!black] (0,0) -- (1,2)
+      node[above] {$\vect{y} = (1, 2)$};
+    \node[green!35!black, anchor=north west, font=\small, fill=white, inner sep=1pt] at (1.45,0.3)
+      {$\operatorname{proj}_{\vect{x}} \vect{y} = (1.5, 0.5)$};
+  \end{tikzpicture}
+  \caption{The vectors $\vect{x} = (3, 1)$ and $\vect{y} = (1, 2)$ meet at
+    an angle of $45^\circ$, since $\vect{x}^\top \vect{y} = 5 =
+    \sqrt{10}\sqrt{5} \cos 45^\circ$. Dropping a perpendicular from
+    $\vect{y}$ onto the line through $\vect{x}$ gives the projection
+    (green), whose length is $\vect{x}^\top \vect{y} / \|\vect{x}\| =
+    5 / \sqrt{10}$.}
+  \label{fig:ch03-angle}
+\end{figure}
+
+\begin{figure}[ht]
+  \centering
+  \begin{tikzpicture}[scale=0.95, >=stealth]
+    \foreach \shift/\vx/\vy/\lab/\sgn in {
+        0/1.3/1.3/{(a) acute}/{$\vect{x}^\top \vect{y} > 0$},
+        4.2/0/1.8/{(b) right angle}/{$\vect{x}^\top \vect{y} = 0$},
+        8.4/-1.3/1.3/{(c) obtuse}/{$\vect{x}^\top \vect{y} < 0$}} {
+      \begin{scope}[xshift=\shift cm]
+        \draw[->, very thick, blue!60!black] (0,0) -- (2,0)
+          node[right] {$\vect{x}$};
+        \draw[->, very thick, orange!85!black] (0,0) -- (\vx,\vy)
+          node[above] {$\vect{y}$};
+        \fill (0,0) circle (1.2pt);
+        \node[font=\small] at (0.6,-0.55) {\lab};
+        \node[font=\small] at (0.6,-1.05) {\sgn};
+      \end{scope}
+    }
+    \draw[gray!70!black] (4.2,0.2) -- (4.4,0.2) -- (4.4,0);
+  \end{tikzpicture}
+  \caption{The sign of the inner product depends only on the angle
+    between the vectors.}
+  \label{fig:ch03-sign}
+\end{figure}
+
+\paragraph{Projection.}
+If $\vect{u}$ is a unit vector, \cref{eq:ch03-angle} reduces to
+$\vect{u}^\top \vect{y} = \|\vect{y}\| \cos \theta$, which is the signed
+length of the shadow that $\vect{y}$ casts on the line through
+$\vect{u}$. The shadow itself is the vector
+\[
+  \operatorname{proj}_{\vect{u}} \vect{y} = (\vect{u}^\top \vect{y})\,
+  \vect{u},
+  \qquad\text{or, for any nonzero } \vect{x},\qquad
+  \operatorname{proj}_{\vect{x}} \vect{y}
+  = \frac{\vect{x}^\top \vect{y}}{\vect{x}^\top \vect{x}}\, \vect{x} .
+\]
+In \Cref{fig:ch03-angle} this is $\tfrac{5}{10}(3, 1) = (1.5, 0.5)$. So an
+inner product with a unit vector answers the question ``how far does
+$\vect{y}$ reach in this direction?'' This reading comes back in
+\Cref{sec:ch03-matvec}, where every row of a matrix asks this question
+of the input.
+
+\paragraph{The Cauchy--Schwarz inequality.}
+Because $|\cos \theta| \le 1$, \cref{eq:ch03-angle} also gives a bound we
+will use repeatedly:
+\begin{equation}
+  |\vect{x}^\top \vect{y}| \le \|\vect{x}\| \, \|\vect{y}\| ,
+  \label{eq:ch03-cauchy-schwarz}
+\end{equation}
+with equality exactly when one vector is a multiple of the other. In
+$\R^2$ and $\R^3$ the angle is something we can draw. In $\R^{768}$ we
+cannot, so we turn the formula around and \emph{define} the angle between
+two vectors by $\cos \theta = \vect{x}^\top \vect{y} / (\|\vect{x}\| \,
+\|\vect{y}\|)$. The Cauchy--Schwarz inequality, which can be proved
+algebraically in any dimension, is what guarantees that this ratio lies
+in $[-1, 1]$ and so is the cosine of some angle.
+
+This also completes the argument of \Cref{chap:ch02} that the gradient
+points uphill: among all unit directions $\vect{u}$, the rate of change
+$\nabla f(\vect{x})^\top \vect{u}$ is largest when $\vect{u}$ points along
+$\nabla f(\vect{x})$, where it equals $\|\nabla f(\vect{x})\|$.
+
+\subsection{Inner Products in AI}
+\label{sec:ch03-inner-ai}
+
+Three of the most common computations in machine learning are inner
+products.
+
+\paragraph{Weighted sums.}
+A linear model scores an input $\vect{x}$ with a weight vector $\vect{w}$
+and a bias $b$:
+\[
+  \hat{y} = \vect{w}^\top \vect{x} + b = w_1 x_1 + \dots + w_n x_n + b .
+\]
+Each weight says how much its feature counts. For the house
+$\vect{x} = (120, 3, 15)$ and weights $\vect{w} = (3, 10, -1)$, measured in
+thousands of dollars per square meter, per bedroom, and per year of age,
+$\vect{w}^\top \vect{x} = 360 + 30 - 15 = 375$. With a base price of
+$b = 50$, the model predicts $\$425{,}000$. The perceptron and logistic
+regression of \Cref{chap:ch01} apply the sign and the sigmoid to exactly
+this number, and so does every neuron of a neural network.
+
+\paragraph{Cosine similarity.}
+To compare two embeddings, we usually care about their directions, not
+their lengths. The \emph{cosine similarity}
+\[
+  \cos(\vect{x}, \vect{y})
+  = \frac{\vect{x}^\top \vect{y}}{\|\vect{x}\| \, \|\vect{y}\|}
+\]
+is the inner product of the normalized vectors. It is $1$ for vectors
+pointing the same way, $0$ for orthogonal vectors, and $-1$ for opposite
+ones.
+
+\begin{example}
+  \label{ex:ch03-cosine}
+  Suppose a model has learned the following (made-up, four-dimensional)
+  embeddings:
+  \[
+    \vect{e}_{\text{cat}} = (0.8, 0.6, 0.1, 0.2), \quad
+    \vect{e}_{\text{dog}} = (0.7, 0.7, 0.2, 0.1), \quad
+    \vect{e}_{\text{car}} = (0.1, 0.0, 0.9, 0.4).
+  \]
+  All three have norm close to $1$. The inner products are
+  \[
+    \vect{e}_{\text{cat}}^\top \vect{e}_{\text{dog}} = 1.02, \qquad
+    \vect{e}_{\text{cat}}^\top \vect{e}_{\text{car}} = 0.25, \qquad
+    \vect{e}_{\text{dog}}^\top \vect{e}_{\text{car}} = 0.29,
+  \]
+  and dividing by the norms gives cosine similarities of $0.98$, $0.25$,
+  and $0.29$. ``Cat'' and ``dog'' point in nearly the same direction, about
+  $11^\circ$ apart, while ``car'' points elsewhere, about $76^\circ$ from
+  ``cat''.
+\end{example}
+
+\paragraph{Attention scores.}
+In a transformer, each token produces a \emph{query} vector $\vect{q}$
+and a \emph{key} vector $\vect{k}$, and the score that decides how much
+one token attends to another is the inner product $\vect{q}^\top
+\vect{k}$. A query and key that point the same way produce a large score.
+\Cref{chap:ch11} builds attention from this single operation.
+
+\begin{aibox}
+  Search engines and retrieval-augmented generation (RAG) systems store
+  millions of documents as embedding vectors. To answer a query, they embed
+  it and return the documents with the highest cosine similarity. Most
+  systems normalize every vector to unit length when it is stored, so that
+  cosine similarity becomes a plain inner product, the cheapest operation
+  that hardware can run at scale.
+\end{aibox}
+
+\subsection{In Code: Inner Products}
+\label{sec:ch03-inner-code}
+
+In NumPy, the \texttt{@} operator computes the inner product of two
+one-dimensional arrays, and \texttt{np.linalg.norm} computes the norm:
+
+\begin{lstlisting}
+import numpy as np
+
+x = np.array([3.0, 1.0])
+y = np.array([1.0, 2.0])
+
+x @ y                              # 5.0, same as np.dot(x, y)
+np.linalg.norm(x)                  # 3.1623 = sqrt(10)
+
+def cosine(x, y):
+    return x @ y / (np.linalg.norm(x) * np.linalg.norm(y))
+
+np.degrees(np.arccos(cosine(x, y)))   # 45.0
+(x @ y) / (x @ x) * x              # projection of y onto x: [1.5, 0.5]
+\end{lstlisting}
+
+The embeddings of \Cref{ex:ch03-cosine}:
+
+\begin{lstlisting}
+cat = np.array([0.8, 0.6, 0.1, 0.2])
+dog = np.array([0.7, 0.7, 0.2, 0.1])
+car = np.array([0.1, 0.0, 0.9, 0.4])
+
+cosine(cat, dog)                   # 0.981
+cosine(cat, car)                   # 0.246
+\end{lstlisting}
+
+Avoid writing the sum as a Python loop. \texttt{x @ y} runs in compiled
+code and, for vectors with thousands of entries, is hundreds of times
+faster than \texttt{sum(a * b for a, b in zip(x, y))}.
+
+\section{Matrices as Collections of Vectors}
+\label{sec:ch03-matrices}
+
+\subsection{Rows and Columns}
+\label{sec:ch03-rows-cols}
+
+An $m \times n$ matrix $A \in \R^{m \times n}$ is a rectangular array of
+numbers with $m$ rows and $n$ columns; its entry in row $i$ and column $j$
+is $a_{ij}$. The order is always rows first: a $3 \times 4$ matrix is three
+rows tall and four columns wide.
+
+A grid of numbers is easy to write down, but the more useful way to read a
+matrix is as a stack of vectors. There are two ways to slice it
+(\Cref{fig:ch03-rows-cols}).
+\begin{itemize}
+  \item \emph{By columns}: $A$ is $n$ vectors in $\R^m$ placed side by side,
+    \[
+      A =
+      \begin{bmatrix}
+        | & | & & | \\
+        \vect{a}_1 & \vect{a}_2 & \cdots & \vect{a}_n \\
+        | & | & & |
+      \end{bmatrix}.
+    \]
+  \item \emph{By rows}: $A$ is $m$ vectors in $\R^n$ stacked on top of each
+    other, each written as a row,
+    \[
+      A =
+      \begin{bmatrix}
+        \text{---} & \vect{r}_1^\top & \text{---} \\
+        \text{---} & \vect{r}_2^\top & \text{---} \\
+        & \vdots & \\
+        \text{---} & \vect{r}_m^\top & \text{---}
+      \end{bmatrix}.
+    \]
+\end{itemize}
+Both describe the same numbers: the $j$th entry of row $\vect{r}_i$ and the
+$i$th entry of column $\vect{a}_j$ are both $a_{ij}$. For example,
+\[
+  A =
+  \begin{bmatrix}
+    2 & -1 & 0 \\
+    1 & 1 & 4
+  \end{bmatrix}
+\]
+has columns $\vect{a}_1 = (2, 1)$, $\vect{a}_2 = (-1, 1)$,
+$\vect{a}_3 = (0, 4)$ in $\R^2$, and rows $\vect{r}_1 = (2, -1, 0)$,
+$\vect{r}_2 = (1, 1, 4)$ in $\R^3$.
+
+\begin{figure}[ht]
+  \centering
+  \begin{tikzpicture}[x=0.95cm, y=0.62cm]
+    % highlighted row 2 and column 3
+    \fill[blue!12] (0,-2) rectangle (4,-1);
+    \fill[orange!22] (2,-3) rectangle (3,0);
+    \fill[blue!12!orange!35] (2,-2) rectangle (3,-1);
+    \foreach \i in {1,2,3} {
+      \foreach \j in {1,...,4} {
+        \node[font=\small] at (\j-0.5, -\i+0.5) {$a_{\i\j}$};
+      }
+    }
+    % brackets
+    \draw[thick] (0.1,0.1) -- (-0.05,0.1) -- (-0.05,-3.1) -- (0.1,-3.1);
+    \draw[thick] (3.9,0.1) -- (4.05,0.1) -- (4.05,-3.1) -- (3.9,-3.1);
+    \draw[<-, blue!60!black] (4.2,-1.5) -- (5,-1.5)
+      node[right] {row $\vect{r}_2^\top$, a vector in $\R^4$};
+    \draw[<-, orange!85!black] (2.5,-3.2) -- (2.5,-3.9)
+      node[below] {column $\vect{a}_3$, a vector in $\R^3$};
+  \end{tikzpicture}
+  \caption{A $3 \times 4$ matrix read two ways: as three row vectors in
+    $\R^4$ or as four column vectors in $\R^3$. Row $2$ and column $3$
+    share the entry $a_{23}$.}
+  \label{fig:ch03-rows-cols}
+\end{figure}
+
+The \emph{transpose} $A^\top \in \R^{n \times m}$ swaps the two views: its
+entry in row $i$ and column $j$ is $a_{ji}$, so the rows of $A^\top$ are
+the columns of $A$, and vice versa. A column vector $\vect{x} \in \R^n$ is
+an $n \times 1$ matrix, and its transpose $\vect{x}^\top$ is a
+$1 \times n$ matrix, which is the notation we have been using for rows
+all along.
+
+\subsection{Matrices in AI}
+\label{sec:ch03-matrices-ai}
+
+Which view is the natural one depends on what the matrix stores.
+
+\paragraph{The data matrix.}
+A dataset of $N$ examples, each with $d$ features, is stored as an
+$N \times d$ matrix $X$ whose rows are the examples. Four houses give
+\[
+  X =
+  \begin{bmatrix}
+    120 & 3 & 15 \\
+    85 & 2 & 40 \\
+    200 & 4 & 5 \\
+    60 & 1 & 30
+  \end{bmatrix}
+  \begin{matrix}
+    \leftarrow \text{house 1} \\
+    \leftarrow \text{house 2} \\
+    \leftarrow \text{house 3} \\
+    \leftarrow \text{house 4}
+  \end{matrix}
+\]
+Here the row view gives the individual houses, and the column view gives
+the features: the first column $(120, 85, 200, 60)$ lists every area in
+the dataset. Preprocessing steps such as standardizing a feature to mean
+$0$ and variance $1$ work on columns; a model's prediction works on rows.
+
+\paragraph{Weight matrices.}
+A layer of a neural network that maps $n$ inputs to $m$ outputs holds an
+$m \times n$ weight matrix $W$. Its row $\vect{w}_i^\top$ is the weight
+vector of output $i$, the $\vect{w}$ of the weighted sum
+$\vect{w}^\top \vect{x} + b$ in \Cref{sec:ch03-inner-ai}. A layer is $m$
+linear models that read the same input, stacked into one matrix.
+
+\paragraph{Embedding tables.}
+A language model with a vocabulary of $V$ tokens and embeddings in $\R^d$
+stores them as a $V \times d$ matrix $E$. Row $i$ is the embedding of token
+$i$, and ``looking up'' a token means reading its row. With $V = 50{,}000$
+and $d = 768$, this one matrix holds about $38$ million parameters.
+
+\paragraph{Images.}
+A grayscale image is a matrix of pixel brightness values, with rows and
+columns matching the rows and columns of the picture. A color image is
+three such matrices, one each for red, green, and blue.
+
+\subsection{In Code: Shapes, Rows, and Columns}
+\label{sec:ch03-matrix-code}
+
+A NumPy matrix is a two-dimensional array. Its \texttt{shape} is the pair
+(rows, columns), and indexing follows the same order:
+
+\begin{lstlisting}
+X = np.array([[120, 3, 15],
+              [ 85, 2, 40],
+              [200, 4,  5],
+              [ 60, 1, 30]])
+
+X.shape            # (4, 3): 4 houses, 3 features
+X[1]               # row 1, house 2:  [85, 2, 40]
+X[:, 0]            # column 0, areas: [120, 85, 200, 60]
+X[2, 1]            # house 3, bedrooms: 4
+X.T.shape          # (3, 4)
+X[:, 0].mean()     # average area: 116.25
+X.mean(axis=0)     # mean of every column: [116.25, 2.5, 22.5]
+\end{lstlisting}
+
+NumPy counts from $0$, so \texttt{X[1]} is the second row. The argument
+\texttt{axis=0} means ``collapse the rows'': the mean is taken down each
+column, giving one number per feature. Getting the axis wrong is one of
+the most common bugs in data code, and checking \texttt{.shape} after
+each step is the cheapest way to catch it.
+
+\section{Matrix--Vector Multiplication as a Linear Transformation}
+\label{sec:ch03-matvec}
+
+\subsection{Two Ways to Compute \texorpdfstring{$A\vect{x}$}{Ax}}
+\label{sec:ch03-two-views}
+
+An $m \times n$ matrix $A$ can multiply a vector $\vect{x} \in \R^n$, and
+the result $A\vect{x}$ is a vector in $\R^m$. The two ways of slicing $A$
+give two ways to compute it, and both are worth knowing.
+
+\paragraph{The row view: inner products.}
+Entry $i$ of $A\vect{x}$ is the inner product of row $i$ with $\vect{x}$:
+\begin{equation}
+  A\vect{x} =
+  \begin{bmatrix}
+    \vect{r}_1^\top \vect{x} \\ \vdots \\ \vect{r}_m^\top \vect{x}
+  \end{bmatrix},
+  \qquad
+  (A\vect{x})_i = \sum_{j=1}^n a_{ij} x_j .
+  \label{eq:ch03-row-view}
+\end{equation}
+
+\paragraph{The column view: a combination of columns.}
+The same vector is a weighted sum of the columns of $A$, with the entries
+of $\vect{x}$ as weights:
+\begin{equation}
+  A\vect{x} = x_1 \vect{a}_1 + x_2 \vect{a}_2 + \dots + x_n \vect{a}_n .
+  \label{eq:ch03-col-view}
+\end{equation}
+
+A sum of scaled vectors like this is called a \emph{linear combination}.
+Both formulas add up the same products $a_{ij} x_j$, only grouped
+differently: the row view sums across each row, the column view adds
+whole columns.
+
+\begin{example}
+  \label{ex:ch03-matvec}
+  Let
+  \[
+    A =
+    \begin{bmatrix} 2 & -1 \\ 1 & 1 \end{bmatrix},
+    \qquad
+    \vect{x} = \begin{bmatrix} 1 \\ 2 \end{bmatrix}.
+  \]
+  By rows, $A\vect{x} = (2 \cdot 1 + (-1) \cdot 2,\ 1 \cdot 1 + 1 \cdot 2)
+  = (0, 3)$. By columns,
+  \[
+    A\vect{x} = 1 \begin{bmatrix} 2 \\ 1 \end{bmatrix}
+      + 2 \begin{bmatrix} -1 \\ 1 \end{bmatrix}
+    = \begin{bmatrix} 0 \\ 3 \end{bmatrix}.
+  \]
+  \Cref{fig:ch03-col-view} draws the column view: walk along the first
+  column once, then along the second column twice.
+\end{example}
+
+\begin{figure}[ht]
+  \centering
+  \begin{tikzpicture}[scale=0.85, >=stealth]
+    \draw[gray!30] (-2.4,-0.4) grid (3.4,3.4);
+    \draw[->, gray!70] (-2.4,0) -- (3.5,0);
+    \draw[->, gray!70] (0,-0.4) -- (0,3.5);
+    \draw[->, thick, orange!85!black, opacity=0.45] (0,0) -- (-1,1)
+      node[left, opacity=1] {$\vect{a}_2$};
+    \draw[->, very thick, blue!60!black] (0,0) -- (2,1);
+    \node[blue!60!black, anchor=north west, font=\small, fill=white, inner sep=1pt] at (1.1,0.35)
+      {$x_1 \vect{a}_1 = 1 \cdot (2, 1)$};
+    \draw[->, very thick, orange!85!black] (2,1) -- (0,3);
+    \node[orange!85!black, anchor=south west, font=\small, fill=white, inner sep=1pt] at (1.15,2.1)
+      {$x_2 \vect{a}_2 = 2 \cdot (-1, 1)$};
+    \draw[->, very thick, green!45!black] (0,0) -- (0,3)
+      node[above left] {$A\vect{x} = (0, 3)$};
+  \end{tikzpicture}
+  \caption{The column view of $A\vect{x}$ for \Cref{ex:ch03-matvec}. The
+    result is $x_1 = 1$ copy of the first column followed by $x_2 = 2$
+    copies of the second.}
+  \label{fig:ch03-col-view}
+\end{figure}
+
+Each view answers a different question. The row view explains what each
+\emph{output} is: entry $i$ measures how far $\vect{x}$ reaches in the
+direction of row $i$, the projection idea of \Cref{sec:ch03-geometry}.
+The column view explains which outputs are \emph{possible}: whatever
+$\vect{x}$ is, $A\vect{x}$ is some combination of the columns of $A$.
+
+For the house data, the row view of $X\vect{w}$ with
+$\vect{w} = (3, 10, -1)$ computes the score of each house,
+\[
+  X\vect{w} =
+  \begin{bmatrix}
+    120 & 3 & 15 \\
+    85 & 2 & 40 \\
+    200 & 4 & 5 \\
+    60 & 1 & 30
+  \end{bmatrix}
+  \begin{bmatrix} 3 \\ 10 \\ -1 \end{bmatrix}
+  = \begin{bmatrix} 375 \\ 235 \\ 635 \\ 160 \end{bmatrix},
+\]
+so one matrix--vector product scores the whole dataset. The column view
+reads the same product as $3 \times \text{areas} + 10 \times
+\text{bedrooms} - 1 \times \text{ages}$, a weighted sum of feature
+columns.
+
+The shapes must match: the number of columns of $A$ must equal the length
+of $\vect{x}$, and the result has as many entries as $A$ has rows. It
+helps to write the shapes under the product,
+\[
+  \underbrace{A}_{m \times n} \; \underbrace{\vect{x}}_{n}
+  = \underbrace{A\vect{x}}_{m} ,
+\]
+where the inner dimensions $n$ cancel.
+
+\subsection{Linear Transformations}
+\label{sec:ch03-linear-maps}
+
+Fixing $A$ and letting $\vect{x}$ vary turns the matrix into a function
+$T(\vect{x}) = A\vect{x}$ from $\R^n$ to $\R^m$. Because the inner product
+is linear, this function has two special properties.
+
+\begin{definition}[Linear transformation]
+  \label{def:linear-map}
+  A function $T\colon \R^n \to \R^m$ is a \emph{linear transformation} if
+  for all $\vect{x}, \vect{y} \in \R^n$ and all numbers $c$,
+  \[
+    T(\vect{x} + \vect{y}) = T(\vect{x}) + T(\vect{y})
+    \qquad\text{and}\qquad
+    T(c\vect{x}) = c\, T(\vect{x}) .
+  \]
+\end{definition}
+
+In words: transforming a sum gives the sum of the transformed vectors, and
+scaling before or after the transformation gives the same result. Every
+matrix defines a linear transformation, since $A(\vect{x} + \vect{y}) =
+A\vect{x} + A\vect{y}$ and $A(c\vect{x}) = c A\vect{x}$ follow from the
+row view entry by entry.
+
+The converse is what makes matrices so central: every linear
+transformation is multiplication by some matrix, and the matrix is easy to
+find. Write $\vect{e}_j$ for the \emph{standard basis vector} with a $1$
+in entry $j$ and $0$ elsewhere. Any $\vect{x}$ is the combination
+$x_1 \vect{e}_1 + \dots + x_n \vect{e}_n$, so by linearity
+\[
+  T(\vect{x}) = x_1 T(\vect{e}_1) + \dots + x_n T(\vect{e}_n) .
+\]
+Comparing with the column view~\eqref{eq:ch03-col-view}, this is
+$A\vect{x}$ for the matrix whose columns are $T(\vect{e}_1), \dots,
+T(\vect{e}_n)$. Equivalently, $A\vect{e}_j = \vect{a}_j$: multiplying by
+the $j$th basis vector picks out the $j$th column. This gives a practical
+rule.
+
+\begin{tip}
+  The columns of a matrix are the images of the standard basis vectors.
+  To understand what a $2 \times 2$ matrix does to the plane, look at
+  where it sends $\vect{e}_1 = (1, 0)$ and $\vect{e}_2 = (0, 1)$; to build
+  a matrix that performs a given transformation, write down where
+  $\vect{e}_1$ and $\vect{e}_2$ should go and use them as columns.
+\end{tip}
+
+Linearity also has a geometric meaning. A linear transformation sends the
+origin to the origin, straight lines to straight lines (or to a single
+point), and evenly spaced grid lines to evenly spaced lines. It may
+stretch, rotate, reflect, or flatten the plane, but it cannot bend it.
+
+\subsection{Examples in the Plane}
+\label{sec:ch03-plane-examples}
+
+\Cref{fig:ch03-transforms} shows six $2 \times 2$ matrices acting on the
+unit square, the square with corners $\vect{0}$, $\vect{e}_1$,
+$\vect{e}_2$, and $\vect{e}_1 + \vect{e}_2$. Each image is the
+parallelogram spanned by the two columns.
+
+\begin{figure}[ht]
+  \centering
+  \newcommand{\transformpanel}[6]{%
+    % #1, #2: first column; #3, #4: second column; #5: label; #6: matrix
+    \begin{tikzpicture}[scale=0.78, >=stealth]
+      \draw[gray!25] (-1.3,-0.6) grid (2.3,2.3);
+      \draw[gray!60] (-1.3,0) -- (2.3,0);
+      \draw[gray!60] (0,-0.6) -- (0,2.3);
+      \draw[dashed, gray!70!black] (0,0) rectangle (1,1);
+      \fill[blue!15, opacity=0.8] (0,0) -- (#1,#2) -- ({#1+#3},{#2+#4})
+        -- (#3,#4) -- cycle;
+      \draw[blue!40!black] (0,0) -- (#1,#2) -- ({#1+#3},{#2+#4})
+        -- (#3,#4) -- cycle;
+      \draw[->, very thick, blue!60!black] (0,0) -- (#1,#2);
+      \draw[->, very thick, orange!85!black] (0,0) -- (#3,#4);
+      \node[font=\small, align=center] at (0.5,-1.6)
+        {#5\\[2pt] $#6$};
+    \end{tikzpicture}}
+  \transformpanel{2}{0}{0}{0.5}{(a) scaling}
+    {\begin{bmatrix} 2 & 0 \\ 0 & 0.5 \end{bmatrix}}\hfill
+  \transformpanel{0.866}{0.5}{-0.5}{0.866}{(b) rotation by $30^\circ$}
+    {\begin{bmatrix} 0.87 & -0.5 \\ 0.5 & 0.87 \end{bmatrix}}\hfill
+  \transformpanel{1}{0}{1}{1}{(c) shear}
+    {\begin{bmatrix} 1 & 1 \\ 0 & 1 \end{bmatrix}}
+  \par\bigskip
+  \transformpanel{-1}{0}{0}{1}{(d) reflection}
+    {\begin{bmatrix} -1 & 0 \\ 0 & 1 \end{bmatrix}}\hfill
+  \transformpanel{1}{0}{0}{0}{(e) projection}
+    {\begin{bmatrix} 1 & 0 \\ 0 & 0 \end{bmatrix}}\hfill
+  \transformpanel{2}{1}{-1}{1}{(f) general}
+    {\begin{bmatrix} 2 & -1 \\ 1 & 1 \end{bmatrix}}
+  \caption{Six linear transformations of the plane. The dashed square is
+    the unit square; the shaded parallelogram is its image. The blue
+    arrow is $A\vect{e}_1$, the first column, and the orange arrow is
+    $A\vect{e}_2$, the second column. In (e) the second column is zero,
+    and the square flattens onto a segment.}
+  \label{fig:ch03-transforms}
+\end{figure}
+
+\paragraph{Scaling.}
+A \emph{diagonal} matrix, with zeros off the diagonal, stretches each axis
+separately: $\operatorname{diag}(2, 0.5)$ sends $(x_1, x_2)$ to
+$(2x_1, 0.5x_2)$, doubling widths and halving heights. Standardizing
+features, which divides each feature by its standard deviation, is
+multiplication by a diagonal matrix.
+
+\paragraph{Rotation.}
+Rotating the plane by an angle $\theta$ counterclockwise sends
+$\vect{e}_1$ to $(\cos\theta, \sin\theta)$ and $\vect{e}_2$ to
+$(-\sin\theta, \cos\theta)$. Using these as columns,
+\[
+  R_\theta =
+  \begin{bmatrix}
+    \cos\theta & -\sin\theta \\
+    \sin\theta & \cos\theta
+  \end{bmatrix}.
+\]
+We did not need to know any trigonometric identities about rotated
+points; the tip above did all the work. Rotations preserve lengths and
+angles, so they also preserve inner products:
+$(R_\theta \vect{x})^\top (R_\theta \vect{y}) = \vect{x}^\top \vect{y}$.
+
+\paragraph{Shear.}
+The matrix $\bigl[\begin{smallmatrix} 1 & 1 \\ 0 & 1
+\end{smallmatrix}\bigr]$ keeps
+$\vect{e}_1$ fixed and tips $\vect{e}_2$ over to $(1, 1)$, sliding each
+horizontal line sideways by its height. The square becomes a slanted
+parallelogram with the same area.
+
+\paragraph{Reflection.}
+$\operatorname{diag}(-1, 1)$ flips the sign of the first coordinate,
+mirroring the plane across the vertical axis. The square keeps its shape
+but its orientation reverses: going from $\vect{e}_1$ to $\vect{e}_2$ is
+now a clockwise turn.
+
+\paragraph{Projection.}
+$\bigl[\begin{smallmatrix} 1 & 0 \\ 0 & 0 \end{smallmatrix}\bigr]$ keeps
+the first coordinate
+and discards the second, so every point drops straight down onto the
+horizontal axis. The whole plane is flattened onto a line, and the
+transformation cannot be undone: $(1, 0)$ and $(1, 5)$ both land on
+$(1, 0)$. Information is lost whenever the columns of a matrix fail to
+point in genuinely different directions, an idea we return to in
+\Cref{chap:ch04}.
+
+\paragraph{A general matrix.}
+The matrix of \Cref{ex:ch03-matvec} combines several of these effects at
+once: it stretches, rotates, and skews the square into the parallelogram
+spanned by $(2, 1)$ and $(-1, 1)$. \Cref{chap:ch04} shows that every
+matrix, however general, can be broken down into a rotation, a scaling
+along the axes, and another rotation (each rotation possibly combined
+with a reflection).
+
+\paragraph{What is not linear.}
+Two functions that appear in every neural network fail the test of
+\Cref{def:linear-map}. A \emph{translation}
+$\vect{x} \mapsto \vect{x} + \vect{b}$ with $\vect{b} \ne \vect{0}$
+moves the origin, but linear maps fix it. A function of the form
+$\vect{x} \mapsto A\vect{x} + \vect{b}$ is called \emph{affine}: a linear
+map followed by a shift. And the ReLU of \Cref{chap:ch01}, applied entry
+by entry, bends the plane along the axes: it sends the line through
+$(1, -1)$ and the origin to two half-axes meeting at a right angle.
+
+\begin{aibox}
+  A fully connected layer computes $\vect{h} = \operatorname{ReLU}(W\vect{x}
+  + \vect{b})$: a linear transformation, a shift, and a nonlinearity. In
+  PyTorch, \texttt{nn.Linear(in\_features, out\_features)} stores a weight
+  of shape \texttt{(out\_features, in\_features)}, an $m \times n$ matrix
+  whose rows are the weight vectors of the outputs, exactly the row view.
+  The nonlinearity is essential. Two linear layers in a row,
+  $W_2(W_1\vect{x})$, are still a single linear transformation, so without
+  the ReLU between them a deep network would be no more expressive than a
+  single matrix.
+\end{aibox}
+
+\subsection{In Code: Matrices as Functions}
+\label{sec:ch03-matvec-code}
+
+The \texttt{@} operator also multiplies a matrix by a vector. Here we check
+both views on \Cref{ex:ch03-matvec}:
+
+\begin{lstlisting}
+A = np.array([[2.0, -1.0],
+              [1.0,  1.0]])
+x = np.array([1.0, 2.0])
+
+A @ x                                      # [0., 3.]
+np.array([A[0] @ x, A[1] @ x])             # row view:    [0., 3.]
+x[0] * A[:, 0] + x[1] * A[:, 1]            # column view: [0., 3.]
+A @ np.array([1.0, 0.0])                   # e1 picks out column 0: [2., 1.]
+\end{lstlisting}
+
+A rotation matrix built from the columns rule, applied to a vector and
+checked against the angle formula:
+
+\begin{lstlisting}
+def rotation(degrees):
+    t = np.radians(degrees)
+    return np.array([[np.cos(t), -np.sin(t)],
+                     [np.sin(t),  np.cos(t)]])
+
+R = rotation(30)
+R @ np.array([1.0, 0.0])                   # [0.866, 0.5]
+u, v = np.array([3.0, 1.0]), np.array([1.0, 2.0])
+(R @ u) @ (R @ v)                          # 5.0, same as u @ v
+\end{lstlisting}
+
+Finally, the house model scores every row of the data matrix with one
+product, and a shape mismatch fails loudly:
+
+\begin{lstlisting}
+w = np.array([3.0, 10.0, -1.0])
+b = 50.0
+
+X @ w + b                  # [425., 285., 685., 210.]
+X @ np.array([3.0, 10.0])  # ValueError: ... (size 2 is different from 3)
+\end{lstlisting}
+
+Applying a transformation to many points at once is the same idea. If the
+rows of a matrix $P$ are points, then \texttt{P @ A.T} transforms every
+point in one call, because row $i$ of $P A^\top$ is
+$(A \vect{p}_i)^\top$. This is how a linear layer processes a whole batch
+of inputs, and it is a first glimpse of matrix--matrix multiplication.
+
+\section{Matrix Multiplication}
+\label{sec:ch03-matmul}
+
+\subsection{The Product as Composition}
+\label{sec:ch03-composition}
+
+Suppose we transform a vector twice: first by an $n \times p$ matrix $B$,
+then by an $m \times n$ matrix $A$. The result $A(B\vect{x})$ depends
+linearly on $\vect{x}$, so by \Cref{sec:ch03-linear-maps} it is
+multiplication by a single $m \times p$ matrix. That matrix is the
+\emph{product} $AB$, and the rule of \Cref{sec:ch03-linear-maps} tells us
+how to find it: its column $j$ is where $\vect{e}_j$ lands. Since
+$B\vect{e}_j = \vect{b}_j$, the $j$th column of $B$, this is
+$A\vect{b}_j$:
+\begin{equation}
+  AB =
+  \begin{bmatrix}
+    | & | & & | \\
+    A\vect{b}_1 & A\vect{b}_2 & \cdots & A\vect{b}_p \\
+    | & | & & |
+  \end{bmatrix}.
+  \label{eq:ch03-matmul-cols}
+\end{equation}
+Writing out entry $i$ of $A\vect{b}_j$ with the row
+view~\eqref{eq:ch03-row-view} gives the familiar formula.
+
+\begin{definition}[Matrix product]
+  \label{def:matmul}
+  The product of $A \in \R^{m \times n}$ and $B \in \R^{n \times p}$ is the
+  matrix $AB \in \R^{m \times p}$ with entries
+  \[
+    (AB)_{ij} = \vect{r}_i^\top \vect{b}_j = \sum_{k=1}^n a_{ik} b_{kj} ,
+  \]
+  where $\vect{r}_i^\top$ is row $i$ of $A$ and $\vect{b}_j$ is column $j$
+  of $B$.
+\end{definition}
+
+Entry $(i, j)$ is the inner product of row $i$ of $A$ with column $j$ of
+$B$. For this to make sense, rows of $A$ and columns of $B$ must have the
+same length, so the number of columns of $A$ must equal the number of
+rows of $B$. As with matrix--vector products, the inner dimensions
+cancel:
+\[
+  \underbrace{A}_{m \times n} \; \underbrace{B}_{n \times p}
+  = \underbrace{AB}_{m \times p} .
+\]
+A vector $\vect{x} \in \R^n$ is an $n \times 1$ matrix, and the definition
+then reduces to the matrix--vector product of \Cref{sec:ch03-matvec}.
+
+The order in $AB$ is easy to get backward: $AB$ applies $B$ first and $A$
+second, matching how $A(B\vect{x})$ reads from the inside out. The order
+matters, as the following example shows.
+
+\begin{example}
+  \label{ex:ch03-noncommute}
+  Let $R$ rotate the plane by $90^\circ$ and let $S$ stretch it
+  horizontally by a factor of $2$:
+  \[
+    R = \begin{bmatrix} 0 & -1 \\ 1 & 0 \end{bmatrix}, \qquad
+    S = \begin{bmatrix} 2 & 0 \\ 0 & 1 \end{bmatrix}.
+  \]
+  Rotating first and stretching second is
+  \[
+    SR = \begin{bmatrix} 2 & 0 \\ 0 & 1 \end{bmatrix}
+         \begin{bmatrix} 0 & -1 \\ 1 & 0 \end{bmatrix}
+       = \begin{bmatrix} 0 & -2 \\ 1 & 0 \end{bmatrix},
+  \]
+  while stretching first and rotating second is
+  \[
+    RS = \begin{bmatrix} 0 & -1 \\ 1 & 0 \end{bmatrix}
+         \begin{bmatrix} 2 & 0 \\ 0 & 1 \end{bmatrix}
+       = \begin{bmatrix} 0 & -1 \\ 2 & 0 \end{bmatrix}.
+  \]
+  In $SR$ the stretch acts on a square that has already been turned, so
+  the result is wide; in $RS$ the square is stretched and then turned on
+  its side, so the result is tall (\Cref{fig:ch03-noncommute}).
+\end{example}
+
+\begin{figure}[ht]
+  \centering
+  \newcommand{\composepanel}[6]{%
+    % #1, #2: first column; #3, #4: second column; #5: label; #6: matrix
+    \begin{tikzpicture}[scale=0.78, >=stealth]
+      \draw[gray!25] (-2.3,-0.6) grid (1.3,2.3);
+      \draw[gray!60] (-2.3,0) -- (1.3,0);
+      \draw[gray!60] (0,-0.6) -- (0,2.3);
+      \draw[dashed, gray!70!black] (0,0) rectangle (1,1);
+      \fill[blue!15, opacity=0.8] (0,0) -- (#1,#2) -- ({#1+#3},{#2+#4})
+        -- (#3,#4) -- cycle;
+      \draw[blue!40!black] (0,0) -- (#1,#2) -- ({#1+#3},{#2+#4})
+        -- (#3,#4) -- cycle;
+      \draw[->, very thick, blue!60!black] (0,0) -- (#1,#2);
+      \draw[->, very thick, orange!85!black] (0,0) -- (#3,#4);
+      \node[font=\small, align=center] at (-0.5,-1.6)
+        {#5\\[2pt] $#6$};
+    \end{tikzpicture}}
+  \composepanel{0}{1}{-1}{0}{(a) $R$: rotate}
+    {\begin{bmatrix} 0 & -1 \\ 1 & 0 \end{bmatrix}}\hfill
+  \composepanel{0}{1}{-2}{0}{(b) $SR$: rotate, then stretch}
+    {\begin{bmatrix} 0 & -2 \\ 1 & 0 \end{bmatrix}}\hfill
+  \composepanel{0}{2}{-1}{0}{(c) $RS$: stretch, then rotate}
+    {\begin{bmatrix} 0 & -1 \\ 2 & 0 \end{bmatrix}}
+  \caption{Matrix multiplication depends on the order. The dashed square
+    is the unit square, and the blue and orange arrows are the images of
+    $\vect{e}_1$ and $\vect{e}_2$. (a) The rotation $R$ alone. (b) Applying
+    $S$ after $R$ stretches the rotated square horizontally. (c) Applying
+    $R$ after $S$ turns the horizontally stretched square upright.}
+  \label{fig:ch03-noncommute}
+\end{figure}
+
+\subsection{Four Ways to Read a Product}
+\label{sec:ch03-four-views}
+
+Just as $A\vect{x}$ had a row view and a column view, $AB$ can be computed
+in four equivalent ways. Each one groups the same $mnp$ products
+$a_{ik} b_{kj}$ differently, and each is the natural reading in some
+situation. We use
+\[
+  A = \begin{bmatrix} 1 & 2 \\ 3 & -1 \end{bmatrix}, \qquad
+  B = \begin{bmatrix} 2 & 0 & 1 \\ 1 & 3 & -2 \end{bmatrix}, \qquad
+  AB = \begin{bmatrix} 4 & 6 & -3 \\ 5 & -3 & 5 \end{bmatrix}
+\]
+as a running example.
+
+\paragraph{Entry by entry: inner products.}
+Each entry is a row of $A$ times a column of $B$. For instance,
+$(AB)_{12} = (1, 2)^\top (0, 3) = 0 + 6 = 6$. This is the definition, and
+it is the right view when each entry has its own meaning, as in the
+similarity matrices of \Cref{sec:ch03-matmul-ai}.
+
+\paragraph{Column by column.}
+By \cref{eq:ch03-matmul-cols}, column $j$ of $AB$ is $A$ times column $j$
+of $B$. The first column of $AB$ is
+\[
+  A \begin{bmatrix} 2 \\ 1 \end{bmatrix} = \begin{bmatrix} 4 \\ 5
+  \end{bmatrix}.
+\]
+Multiplying $A$ by a matrix is multiplying $A$ by several vectors at once,
+one per column.
+
+\paragraph{Row by row.}
+Symmetrically, row $i$ of $AB$ is row $i$ of $A$ times $B$:
+$\vect{r}_i^\top B$. The second row of $AB$ is
+\[
+  \begin{bmatrix} 3 & -1 \end{bmatrix}
+  \begin{bmatrix} 2 & 0 & 1 \\ 1 & 3 & -2 \end{bmatrix}
+  = 3 \begin{bmatrix} 2 & 0 & 1 \end{bmatrix}
+    - 1 \begin{bmatrix} 1 & 3 & -2 \end{bmatrix}
+  = \begin{bmatrix} 5 & -3 & 5 \end{bmatrix},
+\]
+a combination of the rows of $B$. This is the view behind batch
+processing: when the rows of $A$ are data points, each row of the result
+depends only on its own data point.
+
+\paragraph{As a sum of outer products.}
+The \emph{outer product} of a column $\vect{u} \in \R^m$ and a row
+$\vect{v}^\top$ with $\vect{v} \in \R^p$ is the $m \times p$ matrix
+$\vect{u}\vect{v}^\top$ with entries $u_i v_j$: every entry of $\vect{u}$
+times every entry of $\vect{v}$. Pairing column $k$ of $A$ with row $k$ of
+$B$ and adding,
+\begin{equation}
+  AB = \sum_{k=1}^n \vect{a}_k \tilde{\vect{b}}_k^\top ,
+  \label{eq:ch03-outer}
+\end{equation}
+where $\tilde{\vect{b}}_k^\top$ is row $k$ of $B$. In the example,
+\[
+  AB =
+  \begin{bmatrix} 1 \\ 3 \end{bmatrix}
+  \begin{bmatrix} 2 & 0 & 1 \end{bmatrix}
+  +
+  \begin{bmatrix} 2 \\ -1 \end{bmatrix}
+  \begin{bmatrix} 1 & 3 & -2 \end{bmatrix}
+  =
+  \begin{bmatrix} 2 & 0 & 1 \\ 6 & 0 & 3 \end{bmatrix}
+  +
+  \begin{bmatrix} 2 & 6 & -4 \\ -1 & -3 & 2 \end{bmatrix}.
+\]
+Every column of an outer product is a multiple of the same vector
+$\vect{u}$, so it is the simplest kind of matrix there is. Writing a
+matrix as a sum of a few such pieces is the idea behind the singular value
+decomposition of \Cref{chap:ch04} and behind low-rank fine-tuning methods
+such as LoRA.
+
+\begin{table}[ht]
+  \centering
+  \caption{Four ways to compute $AB$, for $A \in \R^{m \times n}$ and
+    $B \in \R^{n \times p}$.}
+  \label{tab:ch03-four-views}
+  \begin{tabular}{@{}lll@{}}
+    \toprule
+    View & Formula & Builds $AB$ from \\
+    \midrule
+    Inner products & $(AB)_{ij} = \vect{r}_i^\top \vect{b}_j$
+      & $mp$ inner products of length $n$ \\
+    Columns & column $j$ of $AB = A\vect{b}_j$
+      & $p$ matrix--vector products \\
+    Rows & row $i$ of $AB = \vect{r}_i^\top B$
+      & $m$ vector--matrix products \\
+    Outer products & $AB = \sum_k \vect{a}_k \tilde{\vect{b}}_k^\top$
+      & $n$ outer products of size $m \times p$ \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection{Rules of Matrix Arithmetic}
+\label{sec:ch03-matmul-rules}
+
+Matrix multiplication obeys most of the rules of ordinary multiplication,
+with one important exception. For matrices of compatible shapes:
+\begin{itemize}
+  \item it is \emph{associative}: $(AB)C = A(BC)$, so we can write $ABC$
+    without parentheses. Both sides mean ``apply $C$, then $B$, then $A$.''
+  \item it is \emph{distributive}: $A(B + C) = AB + AC$ and
+    $(A + B)C = AC + BC$.
+  \item it is \emph{not commutative}: in general $AB \ne BA$, as
+    \Cref{ex:ch03-noncommute} showed. Often $BA$ is not even defined: in
+    the running example, $A$ is $2 \times 2$ and $B$ is $2 \times 3$, so
+    $AB$ exists but $BA$ does not.
+\end{itemize}
+
+The \emph{identity matrix} $I_n$ has ones on the diagonal and zeros
+elsewhere. Its columns are $\vect{e}_1, \dots, \vect{e}_n$, so it is the
+transformation that changes nothing, and $AI_n = I_m A = A$ for every
+$m \times n$ matrix $A$. It plays the role of the number $1$.
+
+Transposing a product reverses the order:
+\begin{equation}
+  (AB)^\top = B^\top A^\top .
+  \label{eq:ch03-transpose-product}
+\end{equation}
+To see why, note that entry $(i, j)$ of $(AB)^\top$ is entry $(j, i)$ of
+$AB$, which is row $j$ of $A$ times column $i$ of $B$. That is the same as
+row $i$ of $B^\top$ times column $j$ of $A^\top$, which is entry $(i, j)$
+of $B^\top A^\top$. A special case we have already used is
+$(A\vect{x})^\top = \vect{x}^\top A^\top$.
+
+\paragraph{The cost of a product.}
+Computing $AB$ by the definition takes $mnp$ multiplications, one for each
+term $a_{ik} b_{kj}$, and about as many additions. For two $n \times n$
+matrices that is $n^3$, which grows quickly: doubling $n$ makes the
+product eight times as expensive. Associativity says that every way of
+placing the parentheses gives the same answer, but not at the same cost.
+For $n \times n$ matrices $A$ and $B$ and a vector $\vect{x}$,
+\[
+  \underbrace{A(B\vect{x})}_{2n^2 \text{ multiplications}}
+  \qquad\text{versus}\qquad
+  \underbrace{(AB)\vect{x}}_{n^3 + n^2 \text{ multiplications}} .
+\]
+With $n = 2000$, the first needs $8$ million multiplications and the
+second about $8$ billion. Multiplying a chain of matrices from the side
+of the vector is almost always the right choice, and backpropagation, the
+algorithm that computes gradients in neural networks, is organized around
+exactly this observation.
+
+\subsection{Matrix Multiplication in AI}
+\label{sec:ch03-matmul-ai}
+
+Most of the arithmetic done by a neural network, in training and in
+inference, is matrix multiplication. GPUs are designed around it. Here
+are the forms it takes.
+
+\paragraph{Batches of inputs.}
+A linear layer with weight matrix $W \in \R^{m \times n}$ and bias
+$\vect{b} \in \R^m$ maps one input to $W\vect{x} + \vect{b}$. To process a
+batch of $N$ inputs at once, stack them as the rows of an $N \times n$
+matrix $X$, as in the data matrix of \Cref{sec:ch03-matrices-ai}. Row $i$
+of the output should be $(W\vect{x}_i + \vect{b})^\top =
+\vect{x}_i^\top W^\top + \vect{b}^\top$, and by the row view of the
+product, all $N$ rows together are
+\[
+  \underbrace{H}_{N \times m}
+  = \underbrace{X}_{N \times n} \, \underbrace{W^\top}_{n \times m}
+    + \mathbf{1} \vect{b}^\top ,
+\]
+where $\mathbf{1} \vect{b}^\top$ is the matrix with $\vect{b}^\top$ in every
+row. This is why code writes the layer as \texttt{X @ W.T + b}: one large
+matrix product instead of $N$ matrix--vector products, which is far
+faster on modern hardware.
+
+\paragraph{Stacking layers.}
+Two linear layers in a row compute $W_2(W_1 \vect{x}) = (W_2 W_1)\vect{x}$.
+By associativity this is a single linear layer with weight matrix
+$W_2 W_1$, which is the precise reason, mentioned in
+\Cref{sec:ch03-plane-examples}, that networks need nonlinearities between
+their layers. A network of $100$ linear layers with no activations can
+represent nothing that one matrix cannot.
+
+\paragraph{Similarity matrices.}
+If the rows of $E \in \R^{N \times d}$ are embeddings, then $EE^\top$ is the
+$N \times N$ matrix of all their pairwise inner products: by the
+entry-by-entry view, $(EE^\top)_{ij} = \vect{e}_i^\top \vect{e}_j$. It is
+called the \emph{Gram matrix} of the vectors. For the three embeddings of
+\Cref{ex:ch03-cosine},
+\[
+  E = \begin{bmatrix}
+    0.8 & 0.6 & 0.1 & 0.2 \\
+    0.7 & 0.7 & 0.2 & 0.1 \\
+    0.1 & 0.0 & 0.9 & 0.4
+  \end{bmatrix}
+  \begin{matrix}
+    \leftarrow \text{cat} \\ \leftarrow \text{dog} \\ \leftarrow \text{car}
+  \end{matrix}
+  \qquad
+  EE^\top = \begin{bmatrix}
+    1.05 & 1.02 & 0.25 \\
+    1.02 & 1.03 & 0.29 \\
+    0.25 & 0.29 & 0.98
+  \end{bmatrix}.
+\]
+The diagonal holds the squared norms, and the off-diagonal entries are the
+inner products we computed one at a time in \Cref{ex:ch03-cosine}. The
+Gram matrix is always symmetric, since
+$(EE^\top)^\top = EE^\top$ by \cref{eq:ch03-transpose-product}. If each row
+of $E$ is first normalized to unit length, $EE^\top$ becomes the matrix of
+cosine similarities.
+
+\paragraph{Attention scores.}
+In a transformer, the queries of $N$ tokens form the rows of a matrix $Q$
+and the keys form the rows of $K$. The single product $QK^\top$ computes
+the score $\vect{q}_i^\top \vect{k}_j$ for every pair of tokens at once,
+an $N \times N$ matrix of the inner products described in
+\Cref{sec:ch03-inner-ai}. Because this matrix has $N^2$ entries, the cost
+of attention grows with the square of the sequence length, which is why
+long contexts are expensive.
+
+\begin{aibox}
+  When people measure the size of a training run in FLOPs (floating-point
+  operations), they are mostly counting the multiply-adds of matrix
+  products. A forward pass through a linear layer on a batch costs about
+  $2Nnm$ FLOPs for $X W^\top$, and the matching backward pass needs two
+  more products of the same size, one for the gradient with respect to the
+  weights and one for the gradient with respect to the inputs. This is the
+  source of the common rule of thumb that training a model with $P$
+  parameters on $T$ tokens takes about $6PT$ FLOPs.
+\end{aibox}
+
+\subsection{In Code: Matrix Multiplication}
+\label{sec:ch03-matmul-code}
+
+The \texttt{@} operator multiplies matrices as well as vectors. Here are
+the four views of \Cref{sec:ch03-four-views} on the running example:
+
+\begin{lstlisting}
+A = np.array([[1, 2],
+              [3, -1]])
+B = np.array([[2, 0, 1],
+              [1, 3, -2]])
+
+A @ B                     # [[4, 6, -3], [5, -3, 5]]
+
+# entry (0, 1): row 0 of A times column 1 of B
+A[0] @ B[:, 1]            # 6
+
+# column view: A times each column of B
+np.column_stack([A @ B[:, j] for j in range(3)])
+
+# row view: each row of A times B
+np.vstack([A[i] @ B for i in range(2)])
+
+# outer-product view
+np.outer(A[:, 0], B[0]) + np.outer(A[:, 1], B[1])
+\end{lstlisting}
+
+All four produce the same matrix. Shapes must line up, and the order
+matters:
+
+\begin{lstlisting}
+B @ A                     # ValueError: ... (size 2 is different from 3)
+
+R = np.array([[0, -1], [1, 0]])    # rotate by 90 degrees
+S = np.array([[2, 0], [0, 1]])     # stretch horizontally
+S @ R                     # [[0, -2], [1, 0]]
+R @ S                     # [[0, -1], [2, 0]]
+
+np.array_equal((A @ B).T, B.T @ A.T)   # True
+\end{lstlisting}
+
+\begin{warning}
+  In NumPy and PyTorch, \texttt{A * B} is \emph{not} the matrix product. It
+  multiplies matching entries, giving the \emph{elementwise} (or
+  \emph{Hadamard}) product, written $A \odot B$. For two square matrices of
+  the same shape it runs without complaint and returns a wrong answer, so
+  this mistake can go unnoticed. Use \texttt{@} for matrix products.
+\end{warning}
+
+The Gram matrix of the embeddings, and the cosine similarities after
+normalizing each row:
+
+\begin{lstlisting}
+E = np.array([[0.8, 0.6, 0.1, 0.2],    # cat
+              [0.7, 0.7, 0.2, 0.1],    # dog
+              [0.1, 0.0, 0.9, 0.4]])   # car
+
+E @ E.T                   # [[1.05, 1.02, 0.25],
+                          #  [1.02, 1.03, 0.29],
+                          #  [0.25, 0.29, 0.98]]
+
+U = E / np.linalg.norm(E, axis=1, keepdims=True)   # unit-length rows
+U @ U.T                   # [[1.   , 0.981, 0.246],
+                          #  [0.981, 1.   , 0.289],
+                          #  [0.246, 0.289, 1.   ]]
+\end{lstlisting}
+
+A linear layer applied to the whole house dataset as one batch. NumPy
+\emph{broadcasts} the bias vector \texttt{b}, adding it to every row:
+
+\begin{lstlisting}
+rng = np.random.default_rng(0)
+W = rng.standard_normal((5, 3))     # 5 outputs, 3 input features
+b = rng.standard_normal(5)
+
+H = X @ W.T + b                     # X is the 4 x 3 data matrix
+H.shape                             # (4, 5): one row per house
+np.allclose(H[2], W @ X[2] + b)     # True: row 2 is house 3 alone
+\end{lstlisting}
+
+Finally, the order of evaluation in a chain of products. Both lines
+compute the same vector, but the first does two matrix--vector products
+and the second does a full matrix--matrix product first:
+
+\begin{lstlisting}
+n = 2000
+M1 = rng.standard_normal((n, n))
+M2 = rng.standard_normal((n, n))
+v = rng.standard_normal(n)
+
+M1 @ (M2 @ v)             # about 1.5 ms on a laptop
+(M1 @ M2) @ v             # about 35 ms
+\end{lstlisting}
+
+The measured gap is smaller than the thousandfold difference in
+multiplications, because optimized libraries run large matrix products
+much more efficiently than matrix--vector products. It still pays to
+multiply in the cheap order, and the gap widens as the matrices grow.
+
+\section{Summary}
+\label{sec:ch03-summary}
+
+\begin{itemize}
+  \item Data points, images, embeddings, parameters, and gradients are all
+    vectors in $\R^n$. The order of the entries is a fixed convention, and
+    only vectors of the same length can be added or compared.
+  \item The \emph{inner product} $\vect{x}^\top \vect{y} = \sum_i x_i y_i$
+    is symmetric and linear, and $\vect{x}^\top \vect{x} =
+    \|\vect{x}\|^2$ is the squared length.
+  \item Geometrically, $\vect{x}^\top \vect{y} = \|\vect{x}\| \,
+    \|\vect{y}\| \cos \theta$. Its sign tells whether two vectors point
+    the same way, are orthogonal, or point opposite ways, and the
+    Cauchy--Schwarz inequality $|\vect{x}^\top \vect{y}| \le \|\vect{x}\|
+    \, \|\vect{y}\|$ follows. For a unit vector $\vect{u}$,
+    $\vect{u}^\top \vect{y}$ is how far $\vect{y}$ reaches in the
+    direction of $\vect{u}$.
+  \item In AI, inner products appear as weighted sums $\vect{w}^\top
+    \vect{x} + b$, as \emph{cosine similarity} between embeddings, and as
+    attention scores $\vect{q}^\top \vect{k}$.
+  \item An $m \times n$ matrix is $n$ column vectors in $\R^m$ or $m$ row
+    vectors in $\R^n$. A data matrix has one example per row and one
+    feature per column; a weight matrix has one output neuron per row.
+    The transpose swaps rows and columns.
+  \item The product $A\vect{x}$ can be read two ways: entry $i$ is the
+    inner product of row $i$ with $\vect{x}$, and the whole vector is the
+    combination $x_1 \vect{a}_1 + \dots + x_n \vect{a}_n$ of the columns.
+  \item The map $\vect{x} \mapsto A\vect{x}$ is a \emph{linear
+    transformation}, and every linear transformation is a matrix whose
+    columns are the images of $\vect{e}_1, \dots, \vect{e}_n$. In the
+    plane, matrices scale, rotate, shear, reflect, and project, but never
+    bend. Translations and ReLU are not linear.
+  \item The \emph{matrix product} $AB$ is the composition ``apply $B$,
+    then $A$,'' with $(AB)_{ij} = \vect{r}_i^\top \vect{b}_j$. It can be
+    read entry by entry, column by column, row by row, or as a sum of
+    outer products.
+  \item Matrix multiplication is associative and distributive but not
+    commutative, and $(AB)^\top = B^\top A^\top$. All orders of evaluation
+    in a chain give the same result, but not at the same cost: multiply
+    from the side of the vector.
+  \item A layer on a batch is $XW^\top + \vect{b}$, stacked linear layers
+    collapse into one matrix unless a nonlinearity separates them, and
+    $EE^\top$ and $QK^\top$ compute all pairwise inner products at once.
+    In code, use \texttt{@} for these products; \texttt{*} multiplies
+    entry by entry.
+\end{itemize}
