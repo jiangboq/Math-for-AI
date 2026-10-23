@@ -27,11 +27,6 @@ make clean  # remove build artifacts
 6. Statistics and Estimation
 7. Information Theory: Entropy, Cross-Entropy, and KL Divergence
 
-**Part IV: Optimization and Learning**
-8. Optimization: Gradient Descent to Adam
-9. Regularization and Generalization
-10. Putting It Together: The Math of Transformers
-
 ## Layout
 
 ```

@@ -756,9 +756,8 @@ $x_2$ flips sign every time and the path zig-zags across the valley. At
 $\eta = 0.35$, which would be a fine step for $x_1$ alone, the $x_2$
 factor is $-1.1$ and the iteration diverges. When a loss is much steeper
 in some directions than in others, plain gradient descent is forced into
-this trade-off. Momentum and Adam~\cite{kingma2015adam}
-(\Cref{chap:ch08}) are designed to
-escape it.
+this trade-off. Momentum and Adam~\cite{kingma2015adam}, the optimizers
+used in practice, are designed to escape it.
 
 \begin{figure}[ht]
   \centering
@@ -924,7 +923,8 @@ situation when training neural networks.
   hand, and it is estimated from a small random batch of
   training examples rather than the whole dataset, which makes each step
   cheap but noisy. This \emph{stochastic gradient descent} and its
-  refinements, momentum and Adam, are the subject of \Cref{chap:ch08}. The
+  refinements, momentum and Adam, are the optimizers used in practice;
+  their details belong to machine learning rather than to this book. The
   learning rate remains the most important setting to tune, for exactly
   the reasons shown in \Cref{fig:ch02-step-sizes}.
 \end{aibox}

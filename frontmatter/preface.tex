@@ -62,12 +62,16 @@ In practice, that means:
 It is also not a machine learning book. It does not survey models or
 teach a framework. Models appear as the places where the mathematics
 shows up: logistic regression for derivatives and likelihood, PCA for
-eigenvectors, language models for conditional probability, and,
-in the final chapter, the transformer for nearly everything at once.
+eigenvectors, language models for conditional probability, and
+attention in transformers for inner products and the softmax. Training
+itself (optimizers such as Adam, regularization and generalization,
+and architectures such as the transformer) belongs to machine learning
+and is left to books on that subject. This book gives you the
+mathematics they rely on.
 
 \section*{How to Read This Book}
 
-The book has four parts, and later chapters build on earlier ones.
+The book has three parts, and later chapters build on earlier ones.
 \begin{itemize}
   \item \emph{Part I, Functions and Derivatives} (\Cref{chap:ch01,chap:ch02}),
     introduces the functions that appear throughout AI, what makes a
@@ -83,11 +87,6 @@ The book has four parts, and later chapters build on earlier ones.
     uncertainty: random variables, distributions, Bayes' rule,
     and the estimation principles from which loss functions are
     derived, followed by entropy, cross-entropy, and KL divergence.
-  \item \emph{Part IV, Optimization and Learning}
-    (\Cref{chap:ch08,chap:ch09,chap:ch10}), turns to training: the
-    optimizers from gradient descent to Adam, regularization and
-    generalization, and finally the mathematics of the transformer,
-    which uses every earlier chapter.
 \end{itemize}
 Read the parts in order if the material is new to you. If you are
 comfortable with some of it, skim those chapters' summaries, which end

@@ -208,6 +208,20 @@ A few conventions hold throughout.
     and $1$, used as a prior for a probability. \\
   i.i.d. & ``independent and identically distributed'' & Data points drawn
     separately from the same distribution. \\
+  $H(X)$, $H(\vect{p})$ & ``entropy of $X$'' & The average surprise
+    $-\log p(x)$ of a discrete random variable: how uncertain it is. \\
+  $h(X)$ & ``differential entropy'' & The entropy of a continuous random
+    variable, computed from its density. \\
+  $\E_{X \sim p}[\,\cdot\,]$ & ``expectation with $X$ drawn from $p$'' &
+    An average in which $X$ follows the distribution $p$. \\
+  $H(p, q)$ & ``cross-entropy of $q$ relative to $p$'' & The average
+    surprise $-\log q(x)$ when $x$ is drawn from $p$: the cost of
+    modeling $p$ with $q$. \\
+  $D_{\mathrm{KL}}(p \,\|\, q)$ & ``KL divergence of $q$ from $p$'' &
+    $H(p, q) - H(p)$: how much worse the model $q$ is than the truth
+    $p$. Zero only when $q = p$; not symmetric. \\
+  $I(X; Y)$ & ``mutual information'' & How much knowing $Y$ tells about
+    $X$, and vice versa. \\
 }
 
 \section*{Statistics and Learning}
