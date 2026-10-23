@@ -174,7 +174,8 @@ one line as
   p(x) = \theta^x (1 - \theta)^{1 - x}, \qquad x \in \{0, 1\}.
 \]
 It models any yes-or-no outcome: a coin flip, whether an email is spam,
-whether a neuron is kept by dropout. Logistic regression
+whether a neuron is kept by dropout~\cite{srivastava2014dropout}.
+Logistic regression
 (\Cref{sec:ch01-ai-functions}) predicts the parameter $\theta =
 \sigma(\vect{w}^\top\vect{x} + b)$ of a Bernoulli random variable, the
 label.
@@ -460,8 +461,8 @@ many models mix them.
     subsets of the data, and dropout multiplies each activation by an
     independent Bernoulli mask.
   \item \emph{Generation.} A language model samples each token from a
-    categorical distribution, and image models such as diffusion models
-    start from continuous random noise.
+    categorical distribution, and image models such as diffusion
+    models~\cite{ho2020ddpm} start from continuous random noise.
 \end{itemize}
 
 \begin{aibox}
@@ -766,7 +767,8 @@ of customers.
 \begin{aibox}
   Weight initialization picks the variance of the starting weights so
   that signals neither grow nor shrink as they pass through the layers.
-  \emph{Glorot} (or Xavier) initialization draws each weight of a layer
+  \emph{Glorot} (or Xavier) initialization~\cite{glorot2010understanding}
+  draws each weight of a layer
   with $n_{\text{in}}$ inputs and $n_{\text{out}}$ outputs from the
   uniform distribution on $[-a, a]$ with $a = \sqrt{6/(n_{\text{in}} +
   n_{\text{out}})}$. Its variance is $(2a)^2/12 = a^2/3 = 2/(n_{\text{in}}
@@ -893,14 +895,16 @@ the exact $0.145$.
 \begin{aibox}
   Gaussians appear throughout deep learning.
   \begin{itemize}
-    \item \emph{Initialization.} He initialization draws each weight of
+    \item \emph{Initialization.} He initialization~\cite{he2015delving}
+      draws each weight of
       a ReLU layer from $\mathcal{N}(0, 2/n_{\text{in}})$.
     \item \emph{Noise models.} Assuming that a regression target is the
       model's prediction plus Gaussian noise turns maximum likelihood
       into minimizing the squared error, as \Cref{chap:ch06} shows.
     \item \emph{Diffusion models} generate images by starting from
       Gaussian noise and removing it step by step.
-    \item \emph{The reparameterization trick.} A variational autoencoder
+    \item \emph{The reparameterization trick.} A variational
+      autoencoder~\cite{kingma2014vae}
       needs a sample from $\mathcal{N}(\mu, \sigma^2)$, where $\mu$ and
       $\sigma$ are outputs of a network, and it needs gradients with
       respect to them. Drawing the sample directly blocks the gradient.
@@ -1277,7 +1281,8 @@ the remaining $51$ cards are aces.
   \[
     P(w_1, \dots, w_n) = \prod_{t=1}^{n} P(w_t \mid w_1, \dots, w_{t-1}),
   \]
-  with no approximation at all. A model such as GPT learns only the
+  with no approximation at all. A model such as
+  GPT~\cite{radford2018gpt} learns only the
   factors: given the words so far, it outputs a categorical distribution
   over the next one. Generating text samples $w_1$, then $w_2$ given
   $w_1$, and so on, one conditional at a time. If the model gives

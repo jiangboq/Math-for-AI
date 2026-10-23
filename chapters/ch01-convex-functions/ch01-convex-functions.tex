@@ -9,8 +9,8 @@
 \label{sec:ch01-why}
 
 \begin{aibox}
-  Linear regression, logistic regression, and SVMs have convex losses, so
-  gradient descent finds the global minimum. Deep networks do not, and much
+  Linear regression, logistic regression, and SVMs~\cite{cortes1995svm}
+  have convex losses, so gradient descent finds the global minimum. Deep networks do not, and much
   of modern training practice exists to work around that.
 \end{aibox}
 
@@ -343,7 +343,8 @@ many layers, and flat regions in each layer combine to stop learning.
 ReLU's flat region on the negative side has the same effect on a single
 unit: a unit whose input is negative for every training example outputs
 $0$ for all of them and stops learning, a failure known as a \emph{dead
-neuron}. Smooth variants such as GELU, used in most transformers, bend the
+neuron}. Smooth variants such as GELU~\cite{hendrycks2016gelu}, used in most
+transformers, bend the
 corner slightly to reduce this problem.
 
 ReLU is also our first example of a convex function that is not smooth.
@@ -418,7 +419,7 @@ Three properties of the softmax come up repeatedly.
   The softmax appears in three central places. It is the final layer of
   almost every classifier, turning logits into class probabilities. It is
   the heart of the attention mechanism in transformers
-  (\Cref{chap:ch10}), where it turns similarity scores into weights that
+  \cite{vaswani2017attention} (\Cref{chap:ch10}), where it turns similarity scores into weights that
   sum to one. And when a language model generates text, it samples each
   next token from a softmax over its vocabulary; the ``temperature''
   setting in a chatbot is exactly the $T$ above.

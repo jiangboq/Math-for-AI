@@ -801,7 +801,7 @@ log-posterior by $2\sigma^2$, which does not move the minimum, gives
   + \lambda\,\|\vect{w}\|^2,
   \qquad \lambda = \frac{\sigma^2}{\tau^2} .
 \]
-This is \emph{ridge regression}: least squares plus an $L_2$ penalty. The
+This is \emph{ridge regression}~\cite{hoerl1970ridge}: least squares plus an $L_2$ penalty. The
 strength $\lambda$ has a meaning now. It is large when the data are noisy
 (large $\sigma$) or when we are confident the weights are small (small
 $\tau$). Setting the gradient to zero, as for least squares, gives the
@@ -822,7 +822,7 @@ exactly one minimizer.
 \paragraph{A Laplace prior gives the $L_1$ penalty.}
 If instead each weight has the Laplace prior with density proportional
 to $e^{-|w_j|/s}$, the log-prior is $-\sum_j |w_j|/s$, and MAP becomes
-least squares plus $\lambda \sum_j |w_j|$, the \emph{lasso}. The Laplace
+least squares plus $\lambda \sum_j |w_j|$, the \emph{lasso}~\cite{tibshirani1996lasso}. The Laplace
 density has a sharp peak at $0$, a strong belief that many weights are
 exactly zero, and the lasso solution reflects it: it sets many weights
 to exactly $0$, selecting a few features and discarding the rest.

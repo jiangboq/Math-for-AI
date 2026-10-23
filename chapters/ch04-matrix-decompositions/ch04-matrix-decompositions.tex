@@ -201,8 +201,9 @@ $|\lambda| > 1$ explode, and components with $|\lambda| < 1$ die out.
   multiplied by something like $W^k$. If the largest $|\lambda|$ is above
   $1$, they explode; if it is below $1$, they vanish, and the network
   cannot learn long-range dependencies. This \emph{exploding and vanishing
-  gradient problem} motivated LSTMs, careful initialization schemes, and
-  gradient clipping. Google's original PageRank algorithm ranked web pages
+  gradient problem} motivated LSTMs~\cite{hochreiter1997lstm}, careful
+  initialization schemes, and gradient clipping. Google's original
+  PageRank algorithm~\cite{brin1998pagerank} ranked web pages
   by the dominant eigenvector of the web's link matrix, computed with
   power iteration.
 \end{aibox}
@@ -762,7 +763,7 @@ the \emph{Frobenius norm} $\|A\|_F = \sqrt{\sum_{i,j} a_{ij}^2}$, the norm
 of the matrix viewed as one long vector. Because $U$ and $V$ preserve
 lengths, it equals $\sqrt{\sigma_1^2 + \dots + \sigma_r^2}$.
 
-\begin{theorem}[Eckart--Young]
+\begin{theorem}[Eckart--Young~\cite{eckart1936approximation}]
   \label{thm:eckart-young}
   Among all $m \times n$ matrices of rank at most $k$, the truncated SVD
   $A_k$ is the closest to $A$ in the Frobenius norm, and
@@ -1234,7 +1235,9 @@ The geometric picture also shows PCA's limits.
   two principal components and plot them; clusters and directions such as
   ``singular to plural'' can show up immediately. Researchers studying
   the internals of neural networks run PCA on hidden activations for the
-  same reason, and nonlinear tools such as t-SNE and UMAP are usually run
+  same reason, and nonlinear tools such as
+  t-SNE~\cite{vandermaaten2008tsne} and UMAP~\cite{mcinnes2018umap} are
+  usually run
   on the top $50$ or so principal components rather than on the raw
   data. Before deep learning, PCA was also a standard preprocessing step,
   used to shrink inputs and remove noise before training a model.
@@ -1294,7 +1297,9 @@ np.linalg.eigvalsh(C)              # [1., 4.]
 \end{note}
 
 \paragraph{A real dataset.}
-The digits dataset that ships with scikit-learn has $1797$ images of
+The digits dataset that ships with scikit-learn~\cite{pedregosa2011sklearn},
+a copy of the UCI Optical Recognition of Handwritten Digits
+data~\cite{alpaydin1998digits}, has $1797$ images of
 handwritten digits, each $8 \times 8$ pixels, flattened into vectors in
 $\R^{64}$ as in \Cref{sec:ch03-examples}. How many directions does the
 data really use?
@@ -1400,7 +1405,8 @@ picture.
       }
     \end{axis}
   \end{tikzpicture}
-  \caption{$300$ handwritten digits from scikit-learn's digits dataset,
+  \caption{$300$ handwritten digits from the UCI digits
+    dataset~\cite{alpaydin1998digits}, as distributed with scikit-learn,
     each $64$-dimensional image placed at its scores on the first two
     principal components and drawn as its label. The two directions
     explain only $28.5\%$ of the variance, yet several digits already

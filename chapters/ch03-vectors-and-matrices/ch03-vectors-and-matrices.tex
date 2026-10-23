@@ -344,7 +344,8 @@ one token attends to another is the inner product $\vect{q}^\top
 \Cref{chap:ch10} builds attention from this single operation.
 
 \begin{aibox}
-  Search engines and retrieval-augmented generation (RAG) systems store
+  Search engines and retrieval-augmented generation (RAG)
+  systems~\cite{lewis2020rag} store
   millions of documents as embedding vectors. To answer a query, they embed
   it and return the documents with the highest cosine similarity. Most
   systems normalize every vector to unit length when it is stored, so that
@@ -1059,7 +1060,7 @@ Every column of an outer product is a multiple of the same vector
 $\vect{u}$, so it is the simplest kind of matrix there is. Writing a
 matrix as a sum of a few such pieces is the idea behind the singular value
 decomposition of \Cref{chap:ch04} and behind low-rank fine-tuning methods
-such as LoRA.
+such as LoRA~\cite{hu2022lora}.
 
 \begin{table}[ht]
   \centering
@@ -1571,7 +1572,8 @@ This is why the multivariate Gaussian density of \Cref{sec:ch05-mvn} has
 the determinant of its covariance matrix in its normalizing constant.
 
 \paragraph{Normalizing flows.}
-A \emph{normalizing flow} is a generative model that pushes simple noise
+A \emph{normalizing flow}~\cite{rezende2015flows} is a generative model
+that pushes simple noise
 $\vect{z}$ through a chain of invertible layers to produce data
 $\vect{x}$. To train it by maximum likelihood, it needs the density of
 each $\vect{x}$, and by the formula above a layer with matrix $W$ contributes the term
