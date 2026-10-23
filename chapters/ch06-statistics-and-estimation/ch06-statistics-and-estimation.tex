@@ -1,4 +1,1028 @@
-\chapter{Statistics and Estimation: MLE and MAP}
+\chapter{Statistics and Estimation}
 \label{chap:ch06}
 
-\textit{Coming soon.}
+% Chapter goal: turn data into parameter values. Show that maximum
+% likelihood and its relatives are where the standard loss functions
+% of machine learning come from.
+
+\Cref{chap:ch05} always knew the distribution. The coin had probability
+of heads $\theta = 0.8$, the waiting time had rate $\lambda = 2$, the
+Gaussian had mean $\mu$ and variance $\sigma^2$, and the questions were
+about the data those distributions would produce. Real problems run the
+other way. We have the data, a list of flips, measured times, or
+labeled images, and we do not know the parameters. \emph{Statistics} is
+the art of going from data back to the distribution that produced it,
+and \emph{estimation} is the part of it that names a value for each
+unknown parameter.
+
+This is also what training a model is. A neural network is a
+distribution with millions of parameters, and training picks their
+values from data. This chapter shows how that choice is made, and why
+the loss functions you meet in practice, squared error and
+cross-entropy, are not arbitrary: both fall out of one principle,
+maximum likelihood.
+
+\section{Maximum Likelihood Estimation}
+\label{sec:ch06-mle}
+
+\subsection{The Idea}
+\label{sec:ch06-mle-idea}
+
+Someone hands us a coin and we flip it $N = 10$ times:
+\[
+  \text{H, T, H, H, H, T, H, H, T, H} ,
+\]
+$k = 7$ heads in all. What is the probability $\theta$ of heads for
+this coin? Most people answer $0.7$ without thinking. Maximum
+likelihood explains why that answer is right, and gives a recipe that
+works in cases where intuition has nothing to say.
+
+The idea is to try out candidate values of $\theta$ and ask, for each
+one: \emph{if this were the true value, how probable would the data we
+actually saw be?} The flips are independent, so by
+\Cref{sec:ch05-independence} the probability of this exact sequence is
+the product of the probabilities of its flips, $\theta$ for each head and
+$1 - \theta$ for each tail:
+\[
+  L(\theta) = \theta^7 (1 - \theta)^3 .
+\]
+Some values of $\theta$ make the data quite plausible and others make it
+very surprising:
+\[
+  L(0.5) \approx 0.00098, \qquad
+  L(0.7) \approx 0.00222, \qquad
+  L(0.9) \approx 0.00048 .
+\]
+A fair coin produces exactly this sequence about once in a thousand
+tries; a coin with $\theta = 0.7$ does so more than twice as often. A
+coin with $\theta = 0.9$ would rarely give as many as three tails. The
+\emph{maximum likelihood estimate} is the value that makes the observed
+data most probable, and \Cref{fig:ch06-likelihood} shows that it is
+$\theta = 0.7$.
+
+\begin{figure}[ht]
+  \centering
+  \begin{tikzpicture}
+    \begin{axis}[
+      name=lik, width=0.48\textwidth, height=0.36\textwidth,
+      xmin=0, xmax=1, ymin=0, ymax=2.6,
+      xtick={0, 0.5, 0.7, 1}, ytick={0, 1, 2},
+      xlabel={$\theta$}, ylabel={$L(\theta) \times 10^3$},
+      axis lines*=left, title={\small likelihood},
+    ]
+      \addplot[very thick, blue!60!black, domain=0:1, samples=150]
+        {1000*x^7*(1-x)^3};
+      \addplot[dashed, accent] coordinates {(0.7,0) (0.7,2.2236)};
+      \fill[accent] (axis cs:0.7,2.2236) circle (2pt);
+      \fill[blue!60!black] (axis cs:0.5,0.977) circle (1.6pt);
+      \fill[blue!60!black] (axis cs:0.9,0.478) circle (1.6pt);
+    \end{axis}
+    \begin{axis}[
+      at={(lik.east)}, anchor=west, xshift=0.07\textwidth,
+      width=0.48\textwidth, height=0.36\textwidth,
+      xmin=0, xmax=1, ymin=-22, ymax=-4,
+      xtick={0, 0.5, 0.7, 1}, ytick={-20, -15, -10, -5},
+      xlabel={$\theta$}, ylabel={$\ell(\theta)$},
+      axis lines*=left, title={\small log-likelihood},
+    ]
+      \addplot[very thick, blue!60!black, domain=0.04:0.985, samples=150]
+        {7*ln(x) + 3*ln(1-x)};
+      \addplot[dashed, accent] coordinates {(0.7,-22) (0.7,-6.109)};
+      \fill[accent] (axis cs:0.7,-6.109) circle (2pt);
+    \end{axis}
+  \end{tikzpicture}
+  \caption{The likelihood $L(\theta) = \theta^7(1 - \theta)^3$ of $7$
+    heads in $10$ flips (left) and its logarithm $\ell(\theta)$ (right).
+    Both peak at the same place, $\hat\theta = 0.7$ (red). The dots on
+    the left mark $\theta = 0.5$ and $\theta = 0.9$, which explain the
+    data less well.}
+  \label{fig:ch06-likelihood}
+\end{figure}
+
+Notice what has changed since \Cref{chap:ch05}. There, $\theta$ was
+fixed and the data varied: $\theta^7(1 - \theta)^3$ was the probability
+of a sequence. Here the data are fixed, because they have already
+happened, and we vary $\theta$. The same formula, read as a function of
+the parameter, is called the \emph{likelihood}. It is a score for each
+candidate parameter, not a probability distribution over parameters: the
+area under the left curve of \Cref{fig:ch06-likelihood} is not $1$, and
+$L(0.7) = 0.0022$ does not mean ``$\theta$ is $0.7$ with probability
+$0.0022$''. Turning a likelihood into probabilities about $\theta$
+requires a prior and Bayes' rule, the subject of the next section.
+
+\subsection{The Mathematical Flow}
+\label{sec:ch06-mle-flow}
+
+The coin shows the whole method in miniature. In general we have data
+$x_1, \dots, x_N$ and a family of distributions $p(x; \theta)$ from
+\Cref{sec:ch05-distributions}, and we assume the data points were drawn
+\emph{independently} from one member of the family. Such data are called
+\emph{independent and identically distributed}, or \emph{i.i.d.}
+
+\begin{definition}[Likelihood and maximum likelihood estimate]
+  \label{def:mle}
+  The \emph{likelihood} of a parameter value $\theta$ for i.i.d.\ data
+  $x_1, \dots, x_N$ is
+  \[
+    L(\theta) = \prod_{i=1}^{N} p(x_i; \theta) ,
+  \]
+  and the \emph{log-likelihood} is its logarithm,
+  \[
+    \ell(\theta) = \log L(\theta) = \sum_{i=1}^{N} \log p(x_i; \theta) .
+  \]
+  The \emph{maximum likelihood estimate} (MLE) is the parameter value
+  that maximizes them,
+  \[
+    \hat\theta = \operatorname*{arg\,max}_{\theta}\, \ell(\theta) .
+  \]
+\end{definition}
+
+The hat in $\hat\theta$ marks an estimate computed from data, as opposed
+to the true but unknown $\theta$. The notation $\operatorname*{arg\,max}$
+means ``the value of $\theta$ at which the maximum is reached'', not
+the maximum itself. For a continuous distribution, $p(x; \theta)$ is a
+density, and the likelihood is a product of densities; nothing else
+changes.
+
+\paragraph{Why take the logarithm?}
+The logarithm is increasing, so $L$ and $\ell = \log L$ go up and down
+together and peak at the same $\theta$, as \Cref{fig:ch06-likelihood}
+shows. We lose nothing by maximizing $\ell$ instead, and we gain three
+things.
+\begin{itemize}
+  \item \emph{Sums are easier than products.} The log of a product is a
+    sum of logs, and the derivative of a sum is the sum of the
+    derivatives, one per data point.
+  \item \emph{Exponents come down.} Many densities, such as the
+    Gaussian, are exponentials, and the logarithm undoes them, leaving
+    simple polynomials.
+  \item \emph{Numbers stay representable.} A product of a thousand
+    probabilities is far below the smallest number a computer can store,
+    and it rounds to $0$. The sum of their logarithms is an ordinary
+    negative number.
+\end{itemize}
+Optimization software, and machine learning in general, prefers to
+minimize, so in practice we minimize the \emph{negative log-likelihood}
+(NLL) $-\ell(\theta)$, often divided by $N$ to make it an average over the
+data. Maximizing $\ell$ and minimizing $-\ell$ are the same problem.
+
+\paragraph{The recipe.}
+Every maximum likelihood problem follows the same five steps.
+\begin{enumerate}
+  \item \emph{Choose a model.} Pick a family $p(x; \theta)$ that suits the
+    data: Bernoulli for yes-or-no outcomes, Gaussian for measurements,
+    and so on (\Cref{tab:ch05-distributions}).
+  \item \emph{Write the likelihood.} Assuming i.i.d.\ data, $L(\theta) =
+    \prod_i p(x_i; \theta)$.
+  \item \emph{Take the logarithm}, turning the product into the sum
+    $\ell(\theta) = \sum_i \log p(x_i; \theta)$, and simplify.
+  \item \emph{Maximize.} Set the derivative to zero, $\ell'(\theta) = 0$,
+    or the gradient $\nabla \ell(\theta) = \vect{0}$ when there are several
+    parameters (\Cref{sec:ch02-gradient}), and solve. When the equation
+    cannot be solved by hand, run gradient descent on $-\ell$
+    (\Cref{sec:ch02-gd}) instead.
+  \item \emph{Check.} Make sure the solution is a maximum and not a
+    minimum, for example with the second derivative, and that it makes
+    sense.
+\end{enumerate}
+The examples below run through this recipe for the distributions of
+\Cref{chap:ch05}.
+
+\begin{example}[Bernoulli]
+  \label{ex:ch06-mle-bernoulli}
+  We observe $N$ coin flips $x_i \in \{0, 1\}$, $k$ of them heads. The
+  model is Bernoulli, $p(x; \theta) = \theta^x (1 - \theta)^{1 - x}$, so
+  the likelihood is $\theta^k (1 - \theta)^{N - k}$ and
+  \[
+    \ell(\theta) = k \log\theta + (N - k) \log(1 - \theta) .
+  \]
+  Its derivative is
+  \[
+    \ell'(\theta) = \frac{k}{\theta} - \frac{N - k}{1 - \theta} .
+  \]
+  Setting it to zero gives $k(1 - \theta) = (N - k)\theta$, which
+  simplifies to $k = N\theta$, so
+  \[
+    \hat\theta = \frac{k}{N} ,
+  \]
+  the fraction of heads. With $k = 7$ and $N = 10$ this is $0.7$, the
+  intuitive answer. To check that it is a maximum, the second derivative
+  $\ell''(\theta) = -k/\theta^2 - (N - k)/(1 - \theta)^2$ is negative for
+  every $\theta$, so $\ell$ is concave (\Cref{sec:ch01-concave}), and the
+  point where its slope is zero is its only maximum.
+\end{example}
+
+\begin{example}[Gaussian]
+  \label{ex:ch06-mle-gaussian}
+  A sensor reports five readings of the same quantity,
+  \[
+    2.1, \quad 1.7, \quad 2.6, \quad 2.2, \quad 1.9 ,
+  \]
+  and we model them as draws from $\mathcal{N}(\mu, \sigma^2)$ with both
+  parameters unknown. The log of the Gaussian density of
+  \Cref{def:gaussian} is $-\tfrac12\log(2\pi\sigma^2) - (x -
+  \mu)^2/(2\sigma^2)$, so for $N$ data points
+  \[
+    \ell(\mu, \sigma^2) = -\frac{N}{2}\log(2\pi\sigma^2)
+      - \frac{1}{2\sigma^2}\sum_{i=1}^{N} (x_i - \mu)^2 .
+  \]
+  There are two parameters, so we set both partial derivatives to zero.
+  For $\mu$,
+  \[
+    \frac{\partial \ell}{\partial \mu}
+    = \frac{1}{\sigma^2} \sum_{i=1}^{N} (x_i - \mu) = 0
+    \quad\Longrightarrow\quad
+    \hat\mu = \frac{1}{N}\sum_{i=1}^{N} x_i = \bar{x} ,
+  \]
+  the sample mean. For $\sigma^2$, treating it as a single variable,
+  \[
+    \frac{\partial \ell}{\partial \sigma^2}
+    = -\frac{N}{2\sigma^2} + \frac{1}{2\sigma^4}\sum_{i=1}^{N} (x_i - \mu)^2
+    = 0
+    \quad\Longrightarrow\quad
+    \hat\sigma^2 = \frac{1}{N}\sum_{i=1}^{N} (x_i - \hat\mu)^2 ,
+  \]
+  the average squared distance from the sample mean. For the five
+  readings, $\hat\mu = 10.5/5 = 2.1$, the deviations are $0$, $-0.4$,
+  $0.5$, $0.1$, $-0.2$, and $\hat\sigma^2 = 0.46/5 = 0.092$, a standard
+  deviation of $\hat\sigma \approx 0.30$.
+\end{example}
+
+The maximum likelihood estimate of the variance divides by $N$, while
+the sample covariance of \Cref{sec:ch04-pca-variance} divided by $N -
+1$. Both are in use. Dividing by $N$ gives the parameter that makes the
+data most probable; dividing by $N - 1$ corrects a small tendency of
+$\hat\sigma^2$ to come out too low, because the deviations are measured
+from $\bar{x}$, which sits in the middle of the data, rather than from
+the true mean. The difference vanishes as $N$ grows; we return to it
+later in the chapter.
+
+\begin{example}[Exponential]
+  \label{ex:ch06-mle-exponential}
+  The gaps between five requests to the server of
+  \Cref{ex:ch05-exponential} are $0.3$, $0.8$, $0.1$, $0.6$, and $0.2$
+  seconds. With the exponential density $\lambda e^{-\lambda t}$,
+  \[
+    \ell(\lambda) = \sum_{i=1}^{N} \bigl(\log\lambda - \lambda t_i\bigr)
+    = N\log\lambda - \lambda \sum_{i=1}^{N} t_i ,
+    \qquad
+    \ell'(\lambda) = \frac{N}{\lambda} - \sum_{i=1}^{N} t_i .
+  \]
+  Setting the derivative to zero gives $\hat\lambda = N / \sum_i t_i =
+  1/\bar{t}$. The average gap is $2/5 = 0.4$ seconds, so $\hat\lambda =
+  2.5$ requests per second. Since the mean of the exponential is
+  $1/\lambda$, the estimate simply matches the model's mean to the
+  sample mean.
+\end{example}
+
+In all three examples the maximum likelihood estimate turned out to be
+a natural summary of the data: a fraction, an average, an average squared
+deviation. That is reassuring, but the method's real value is that it
+keeps working when no natural summary suggests itself, as in the models
+of the next subsection.
+
+\subsection{Maximum Likelihood in Machine Learning}
+\label{sec:ch06-mle-ml}
+
+A supervised model does not describe the inputs $\vect{x}$; it
+describes the label $y$ \emph{given} the input, through a conditional
+distribution $p(y \mid \vect{x}; \vect{w})$ whose parameters $\vect{w}$
+are the model's weights. The data are pairs $(\vect{x}_i, y_i)$, and the
+log-likelihood is
+\[
+  \ell(\vect{w}) = \sum_{i=1}^{N} \log p(y_i \mid \vect{x}_i; \vect{w}) .
+\]
+Training by maximum likelihood means choosing the weights that make the
+observed labels most probable. Two choices of $p(y \mid \vect{x};
+\vect{w})$ give the two most common loss functions.
+
+\paragraph{Regression: Gaussian noise gives squared error.}
+Suppose the target is a linear function of the input plus Gaussian
+noise,
+\[
+  y = \vect{w}^\top\vect{x} + b + \varepsilon,
+  \qquad \varepsilon \sim \mathcal{N}(0, \sigma^2) .
+\]
+By \cref{eq:ch05-gaussian-affine}, $y$ given $\vect{x}$ is then
+Gaussian with mean $\hat{y} = \vect{w}^\top\vect{x} + b$, the model's
+prediction, and variance $\sigma^2$. The log-likelihood is the one of
+\Cref{ex:ch06-mle-gaussian}, with each data point having its own mean
+$\hat{y}_i$:
+\[
+  \ell(\vect{w}, b) = -\frac{N}{2}\log(2\pi\sigma^2)
+    - \frac{1}{2\sigma^2}\sum_{i=1}^{N} (y_i - \hat{y}_i)^2 .
+\]
+The first term does not involve the weights, and the second is a
+negative constant times the sum of squared errors. So
+\[
+  \text{maximizing the likelihood}
+  \quad\Longleftrightarrow\quad
+  \text{minimizing } \sum_{i=1}^{N} (y_i - \hat{y}_i)^2 .
+\]
+\emph{Least squares is maximum likelihood under Gaussian noise.} The
+squared error is not an arbitrary choice of loss; it is what the
+Gaussian assumption implies. As a bonus, maximizing over $\sigma^2$ as
+in \Cref{ex:ch06-mle-gaussian} gives $\hat\sigma^2 = \frac1N\sum_i (y_i
+- \hat{y}_i)^2$, the mean squared error of the fitted model, which tells
+us how much noise is left.
+
+The derivation also says when squared error is the wrong loss. Gaussian
+tails are thin (\Cref{sec:ch05-gaussian}), so the Gaussian model regards
+a residual of five standard deviations as almost impossible, and the
+squared error punishes it heavily. If the data contain occasional wild
+outliers, a few bad points can drag the whole fit. Assuming
+heavier-tailed noise, such as the Laplace distribution with density
+proportional to $e^{-|\varepsilon|/s}$, leads by the same steps to the
+absolute error $\sum_i |y_i - \hat{y}_i|$, which is far less sensitive
+to outliers.
+
+\paragraph{Classification: Bernoulli labels give cross-entropy.}
+For a label $y \in \{0, 1\}$, logistic regression
+(\Cref{sec:ch01-ai-functions}) predicts the probability of $y = 1$,
+\[
+  \hat{p} = \sigma(\vect{w}^\top\vect{x} + b),
+\]
+and models the label as Bernoulli with parameter $\hat{p}$. The log of
+the Bernoulli PMF $\hat{p}^{y}(1 - \hat{p})^{1 - y}$ is $y \log\hat{p} +
+(1 - y)\log(1 - \hat{p})$, so the average negative log-likelihood is
+\[
+  -\frac{1}{N}\,\ell(\vect{w}, b)
+  = -\frac{1}{N}\sum_{i=1}^{N}
+    \Bigl[\, y_i \log\hat{p}_i + (1 - y_i)\log(1 - \hat{p}_i) \Bigr] .
+\]
+This is the \emph{binary cross-entropy} loss. For $K$ classes, with a
+softmax output $\hat{\vect{p}}_i$ and one-hot labels $\vect{y}_i$, the
+categorical log-PMF of \Cref{sec:ch05-categorical} gives the
+\emph{cross-entropy} loss $-\frac1N\sum_i\sum_k y_{ik}\log\hat{p}_{ik}$ in
+the same way. Unlike least squares, there is no formula for the best
+weights, but the gradient is simple. With $z = \vect{w}^\top\vect{x} +
+b$ and the sigmoid derivative $\sigma'(z) = \sigma(z)(1 - \sigma(z))$ of
+\Cref{ex:ch02-sigmoid}, the loss of one example has
+\[
+  \frac{\partial}{\partial z}
+  \Bigl(-y\log\sigma(z) - (1 - y)\log\bigl(1 - \sigma(z)\bigr)\Bigr)
+  = \hat{p} - y ,
+\]
+so by the chain rule the gradient with respect to $\vect{w}$ is
+$(\hat{p} - y)\,\vect{x}$: prediction minus label, times the input.
+Gradient descent on this loss is how logistic regression is trained.
+The negative log-likelihood is also convex in $(\vect{w}, b)$, so by
+\Cref{thm:ch01-local-global} gradient descent cannot get stuck in a
+poor local minimum.
+
+\begin{aibox}
+  Almost every model you will train is fit by maximum likelihood, even
+  when the documentation only mentions a loss function.
+  \begin{itemize}
+    \item \texttt{MSELoss} in PyTorch is the negative log-likelihood of a
+      Gaussian with fixed variance, up to constants.
+    \item \texttt{BCEWithLogitsLoss} and \texttt{CrossEntropyLoss} are
+      the negative log-likelihoods of Bernoulli and categorical labels.
+    \item Pretraining a language model is maximum likelihood on text.
+      By the chain rule of \Cref{sec:ch05-conditional}, the
+      log-likelihood of a document is the sum of the log-probabilities
+      of each token given the ones before it, and the training loss is
+      its negative, averaged over tokens. The \emph{perplexity} that
+      language-model papers report is $e$ raised to this average.
+  \end{itemize}
+  Choosing a loss is choosing a noise model. When a loss seems not to
+  fit the problem, ask what distribution it assumes.
+\end{aibox}
+
+\subsection{When Maximum Likelihood Goes Wrong}
+\label{sec:ch06-mle-limits}
+
+Maximum likelihood trusts the data completely, and that is both its
+strength and its weakness. Flip a new coin three times and get three
+heads. The estimate of \Cref{ex:ch06-mle-bernoulli} is $\hat\theta = 3/3
+= 1$: the coin always lands heads, and a tail is impossible. Nobody
+believes this after three flips, yet nothing in the method objects. With
+little data, the parameter that fits the data best fits the accidents
+of the sample along with the truth. This is \emph{overfitting}, and it
+gets worse as the number of parameters grows relative to the number of
+data points. A model with millions of weights trained by pure maximum
+likelihood on a small data set can memorize the training labels and
+predict poorly on anything new.
+
+The other weakness is that the answer can only be as good as the model.
+Maximum likelihood finds the best parameters \emph{within the chosen
+family}. If the data are not Gaussian, the best Gaussian may still
+describe them badly, and if the data are not independent, the product
+formula for the likelihood is wrong to begin with.
+
+On the positive side, when the model is right and the data are
+plentiful, maximum likelihood is hard to beat. As $N$ grows, the
+estimate converges to the true parameter, and no other reasonable
+estimator gets there with smaller error. The problems above are
+problems of small data and wrong models. The first one has a principled
+fix: combine the likelihood with a prior that says, for example, that
+coins are usually close to fair. That is the subject of the next
+section.
+
+\subsection{In Code: Fitting Distributions and Models}
+\label{sec:ch06-mle-code}
+
+For the distributions of \Cref{sec:ch06-mle-flow}, the maximum
+likelihood estimates are one-line summaries of the data. Simulating data
+from known parameters and estimating them back is the best way to check
+a formula:
+
+\begin{lstlisting}
+import numpy as np
+
+rng = np.random.default_rng(0)
+
+flips = rng.random(1000) < 0.3      # 1000 flips, true theta = 0.3
+flips.mean()                        # 0.277: theta_hat = k / N
+
+x = rng.normal(loc=5.0, scale=2.0, size=1000)
+x.mean(), x.std()                   # 4.98, 2.05: mu_hat, sigma_hat
+
+t = rng.exponential(scale=0.5, size=1000)   # rate 2 (scale = 1/rate)
+1 / t.mean()                        # 1.95: lambda_hat = 1 / t_bar
+\end{lstlisting}
+
+\begin{warning}
+  \texttt{np.std} and \texttt{np.var} divide by $N$ by default, which is
+  the maximum likelihood estimate, while \texttt{np.cov}, pandas'
+  \texttt{.std()}, and \texttt{torch.std} divide by $N - 1$. Pass
+  \texttt{ddof=1} or \texttt{ddof=0} to choose explicitly. For the five
+  sensor readings of \Cref{ex:ch06-mle-gaussian}, the two give variances
+  $0.092$ and $0.115$.
+\end{warning}
+
+When no formula is available, minimize the negative log-likelihood
+numerically. Here it is done for the Gaussian, where we can compare with
+the formula. The standard deviation must be positive, so we optimize its
+logarithm, which can be any real number:
+
+\begin{lstlisting}
+from scipy import optimize, stats
+
+def nll(params, x):
+    mu, log_sigma = params
+    return -stats.norm.logpdf(x, loc=mu, scale=np.exp(log_sigma)).sum()
+
+res = optimize.minimize(nll, x0=[0.0, 0.0], args=(x,))
+res.x[0], np.exp(res.x[1])          # 4.98, 2.05: same as the formulas
+
+stats.norm.fit(x)                   # (4.98, 2.05): SciPy's built-in MLE
+\end{lstlisting}
+
+Every distribution in \texttt{scipy.stats} has a \texttt{fit} method
+that does exactly this. For linear regression with Gaussian noise,
+maximum likelihood is least squares, which NumPy solves directly. The
+noise level comes out as the root mean squared residual:
+
+\begin{lstlisting}
+N = 200
+xs = rng.uniform(0, 10, size=N)
+y = 3.0 * xs + 2.0 + rng.normal(0, 1.5, size=N)  # w = 3, b = 2, sigma = 1.5
+
+X = np.column_stack([xs, np.ones(N)])   # a column of ones for b
+w_hat, *_ = np.linalg.lstsq(X, y, rcond=None)
+w_hat                                   # [3.00 2.12]
+resid = y - X @ w_hat
+np.sqrt(np.mean(resid**2))              # 1.56: sigma_hat
+\end{lstlisting}
+
+Logistic regression has no formula, so we minimize the binary
+cross-entropy by gradient descent, using the gradient $(\hat{p} -
+y)\,\vect{x}$ derived above, averaged over the data:
+
+\begin{lstlisting}
+N = 500
+X = rng.normal(size=(N, 2))
+w_true, b_true = np.array([2.0, -1.0]), 0.5
+p = 1 / (1 + np.exp(-(X @ w_true + b_true)))
+y = (rng.random(N) < p).astype(float)   # Bernoulli labels
+
+w, b, eta = np.zeros(2), 0.0, 0.5
+for step in range(2000):
+    p_hat = 1 / (1 + np.exp(-(X @ w + b)))
+    w -= eta * X.T @ (p_hat - y) / N    # gradient of the average NLL
+    b -= eta * np.mean(p_hat - y)
+
+w, b                                    # [1.92 -1.00], 0.51
+\end{lstlisting}
+
+The estimates land close to the true weights $(2, -1)$ and bias $0.5$,
+and they get closer as $N$ grows. Libraries such as scikit-learn's
+\texttt{LogisticRegression} solve the same problem with faster
+optimizers, and, by default, with a penalty on large weights, which the
+next section explains as a prior.
+
+\section{Maximum A Posteriori Estimation}
+\label{sec:ch06-map}
+
+\subsection{The Idea}
+\label{sec:ch06-map-idea}
+
+Flip a coin three times and get three heads. Maximum likelihood
+concludes that the coin always lands heads (\Cref{sec:ch06-mle-limits}),
+and we reject that conclusion at once. Why? Not because of anything in
+the three flips, which really are best explained by $\theta = 1$, but
+because of what we knew \emph{before} flipping: almost every coin is
+close to fair, and coins that never land tails essentially do not
+exist. Three heads in a row happens to a fair coin one time in eight.
+That is unusual, but much less unusual than a two-headed coin.
+
+Maximum likelihood has no place to put this kind of knowledge. Bayes'
+rule does. In \Cref{sec:ch05-bayes-rule}, we combined a \emph{prior}, how
+plausible each hypothesis was before seeing the evidence, with a
+\emph{likelihood}, how well each hypothesis explains the evidence, to
+get a \emph{posterior}:
+\[
+  \text{posterior} \;\propto\; \text{likelihood} \times \text{prior} .
+\]
+\Cref{ex:ch05-coins} already did this for a bag of three coins. The
+hypotheses were three values of $\theta$, and after three heads the
+posterior put probability $0.794$ on $\theta = 0.8$, the most probable
+value. Choosing the parameter with the highest posterior probability is
+\emph{maximum a posteriori} estimation, or \emph{MAP}. (\emph{A
+posteriori} is Latin for ``from what comes after'': after the data.)
+
+The only thing that changes for a real coin is that $\theta$ can be any
+number in $[0, 1]$, not one of three, so the prior has to be a density
+over $[0, 1]$. Then MAP picks the peak of the posterior density. In
+short:
+\begin{itemize}
+  \item MLE asks: which parameter makes the data most probable?
+  \item MAP asks: which parameter is most probable, given the data
+    \emph{and} what we knew before?
+\end{itemize}
+
+\subsection{The Mathematical Flow}
+\label{sec:ch06-map-flow}
+
+Write $\mathcal{D} = \{x_1, \dots, x_N\}$ for the data and $p(\theta)$
+for the prior density of the parameter. Bayes' rule for densities
+(\Cref{sec:ch05-bayes-rule}) gives the posterior
+\[
+  p(\theta \mid \mathcal{D})
+  = \frac{p(\mathcal{D} \mid \theta)\, p(\theta)}{p(\mathcal{D})} .
+\]
+The likelihood $p(\mathcal{D} \mid \theta)$ is the $L(\theta)$ of
+\Cref{def:mle}, now written as a conditional, since $\theta$ is treated
+as a random quantity with its own distribution.
+
+\begin{definition}[Maximum a posteriori estimate]
+  \label{def:map}
+  The \emph{maximum a posteriori} (MAP) estimate of $\theta$ is the
+  value that maximizes the posterior density,
+  \[
+    \hat\theta_{\text{MAP}}
+    = \operatorname*{arg\,max}_{\theta}\, p(\theta \mid \mathcal{D})
+    = \operatorname*{arg\,max}_{\theta}\,
+      \Bigl[\, \underbrace{\sum_{i=1}^{N} \log p(x_i \mid \theta)}_{\ell(\theta)}
+      + \log p(\theta) \Bigr] .
+  \]
+\end{definition}
+
+Two simplifications lead from the posterior to the bracket on the right,
+and they are the whole mathematical content of MAP.
+\begin{itemize}
+  \item \emph{Drop the evidence.} The denominator $p(\mathcal{D})$ is the
+    same number for every $\theta$, so dividing by it does not move the
+    peak. We can maximize $p(\mathcal{D} \mid \theta)\,p(\theta)$ instead,
+    and never compute the evidence, which is often an integral with no
+    formula.
+  \item \emph{Take the logarithm.} As for MLE, the logarithm keeps the peak
+    in place and turns the product into a sum. For i.i.d.\ data the
+    likelihood part becomes the log-likelihood $\ell(\theta)$.
+\end{itemize}
+So the MAP objective is \emph{the log-likelihood plus the log-prior}.
+The first term rewards parameters that fit the data; the second rewards
+parameters that were plausible to begin with. Written as a quantity to
+minimize,
+\begin{equation}
+  -\log p(\theta \mid \mathcal{D})
+  = \underbrace{-\ell(\theta)}_{\text{data fit}}
+  \;\underbrace{-\log p(\theta)}_{\text{penalty}}
+  \;+\; \text{const} .
+  \label{eq:ch06-map-objective}
+\end{equation}
+The negative log-prior acts as a \emph{penalty} that grows as $\theta$
+moves away from values the prior favors.
+
+\paragraph{The recipe.}
+MAP follows the recipe of \Cref{sec:ch06-mle-flow} with one new step.
+\begin{enumerate}
+  \item \emph{Choose a model} $p(x \mid \theta)$ for the data.
+  \item \emph{Choose a prior} $p(\theta)$ that encodes what is known
+    about the parameter before seeing the data.
+  \item \emph{Write the log-posterior}, up to a constant: $\ell(\theta) +
+    \log p(\theta)$.
+  \item \emph{Maximize} it, by setting the derivative or gradient to zero
+    or by gradient descent on its negative.
+  \item \emph{Check} that the result is a maximum and makes sense.
+\end{enumerate}
+If the prior is flat, $p(\theta) = \text{const}$, the penalty is constant,
+and MAP gives the same answer as MLE. MAP is maximum likelihood with an
+opinion; a prior with no opinion leaves it unchanged.
+
+\paragraph{A prior for a probability: the Beta distribution.}
+To run the recipe on the coin, we need a density on $[0, 1]$ that can
+express ``probably near $1/2$''. The standard choice is the \emph{Beta}
+distribution with parameters $a, b > 0$,
+\[
+  p(\theta) = \frac{1}{B(a, b)}\, \theta^{a - 1} (1 - \theta)^{b - 1},
+  \qquad 0 \le \theta \le 1 ,
+\]
+where $B(a, b)$ is the constant that makes the area $1$. Its mean is
+$a/(a + b)$. With $a = b = 1$ it is the uniform density, no preference
+at all. With $a = b = 5$ it is a bump centered at $1/2$
+(\Cref{fig:ch06-map}), saying that the coin is probably near fair but
+could be off by $0.1$ or $0.2$. Larger equal values of $a$ and $b$ make
+the bump narrower and the opinion stronger.
+
+\begin{example}[Coin with a Beta prior]
+  \label{ex:ch06-map-coin}
+  We observe $k$ heads in $N$ flips and use the prior $\text{Beta}(a,
+  b)$. The log-posterior, up to a constant, is
+  \[
+    \underbrace{k\log\theta + (N - k)\log(1 - \theta)}_{\text{log-likelihood}}
+    + \underbrace{(a - 1)\log\theta + (b - 1)\log(1 - \theta)}_{\text{log-prior}} .
+  \]
+  It has the same form as the Bernoulli log-likelihood of
+  \Cref{ex:ch06-mle-bernoulli}, with $k + a - 1$ heads and $(N - k) + (b
+  - 1)$ tails. Setting the derivative to zero exactly as there gives
+  \[
+    \hat\theta_{\text{MAP}} = \frac{k + a - 1}{N + a + b - 2} .
+  \]
+  With the prior $\text{Beta}(5, 5)$ and three heads in three flips,
+  \[
+    \hat\theta_{\text{MAP}} = \frac{3 + 4}{3 + 8} = \frac{7}{11}
+    \approx 0.64 ,
+  \]
+  compared with $\hat\theta_{\text{MLE}} = 1$. The data pull the estimate
+  above $1/2$, toward heads, but the prior keeps it far from the
+  extreme.
+\end{example}
+
+The formula has a simple reading. The prior $\text{Beta}(a, b)$ acts
+like $a - 1$ heads and $b - 1$ tails that we pretend to have seen before
+the experiment, called \emph{pseudo-counts}. MAP then computes the
+fraction of heads among the real and imagined flips together. The prior
+$\text{Beta}(5, 5)$ is worth $4$ imagined heads and $4$ imagined tails.
+The posterior itself is also a Beta distribution, $\text{Beta}(a + k,
+b + N - k)$: the data simply add to the counts. A prior whose posterior
+stays in the same family is called \emph{conjugate}, and the Beta is the
+conjugate prior of the Bernoulli.
+
+\begin{figure}[ht]
+  \centering
+  \begin{tikzpicture}
+    \begin{axis}[
+      width=0.72\textwidth, height=0.4\textwidth,
+      xmin=0, xmax=1, ymin=0, ymax=4.3,
+      xtick={0, 0.5, 0.636, 1}, xticklabels={$0$, $0.5$, $\tfrac{7}{11}$, $1$},
+      ytick={0, 1, 2, 3, 4}, xlabel={$\theta$}, ylabel={density},
+      axis lines*=left,
+      legend style={at={(0.02,0.98)}, anchor=north west, draw=none,
+        font=\small, fill=none},
+      legend cell align=left,
+    ]
+      \addplot[very thick, green!45!black, dashed, domain=0:1, samples=150]
+        {630*x^4*(1-x)^4};
+      \addplot[very thick, gray, dotted, domain=0:1, samples=150]
+        {4*x^3};
+      \addplot[very thick, blue!60!black, domain=0:1, samples=150]
+        {3960*x^7*(1-x)^4};
+      \addplot[dashed, accent] coordinates {(0.636,0) (0.636,2.926)};
+      \fill[accent] (axis cs:0.636,2.926) circle (2pt);
+      \fill[gray] (axis cs:1,4) circle (2pt);
+      \legend{{prior $\text{Beta}(5, 5)$},
+        {likelihood $\theta^3$ (scaled)},
+        {posterior $\text{Beta}(8, 5)$}}
+    \end{axis}
+  \end{tikzpicture}
+  \caption{MAP for three heads in three flips. The likelihood (dotted,
+    scaled to area $1$) peaks at $\theta = 1$, the MLE. The prior
+    (dashed) favors values near $1/2$. Their product, the posterior
+    (solid), is a compromise, and its peak $7/11$ (red) is the MAP
+    estimate.}
+  \label{fig:ch06-map}
+\end{figure}
+
+\paragraph{The data eventually win.}
+Keep the same $\text{Beta}(5, 5)$ prior and collect more flips, always
+with $70\%$ heads. \Cref{tab:ch06-map-vs-mle} shows the two estimates.
+With little data the prior dominates and pulls the estimate strongly
+toward $1/2$. As $N$ grows, the $8$ pseudo-counts are swamped by the real
+ones, and MAP approaches MLE. This is the behavior we want: a prior
+should guide the estimate when evidence is scarce and step aside when
+evidence is plentiful.
+
+\begin{table}[ht]
+  \centering
+  \small
+  \caption{MLE and MAP with a $\text{Beta}(5, 5)$ prior, for data with
+    $70\%$ heads (and for three heads in three flips).}
+  \label{tab:ch06-map-vs-mle}
+  \begin{tabular}{@{}rrcc@{}}
+    \toprule
+    Heads $k$ & Flips $N$ & $\hat\theta_{\text{MLE}} = k/N$
+      & $\hat\theta_{\text{MAP}} = (k + 4)/(N + 8)$ \\
+    \midrule
+    $3$ & $3$ & $1.000$ & $0.636$ \\
+    $7$ & $10$ & $0.700$ & $0.611$ \\
+    $70$ & $100$ & $0.700$ & $0.685$ \\
+    $700$ & $1000$ & $0.700$ & $0.698$ \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\begin{example}[Gaussian mean with a Gaussian prior]
+  \label{ex:ch06-map-gaussian}
+  Return to the five sensor readings of \Cref{ex:ch06-mle-gaussian},
+  with mean $\bar{x} = 2.1$. Suppose the sensor's noise is known to have
+  standard deviation $\sigma = 0.3$, and the manufacturer says the
+  quantity being measured is usually about $\mu_0 = 2.5$, give or take
+  $\tau = 0.2$. We encode this as the prior $\mu \sim \mathcal{N}(\mu_0,
+  \tau^2)$. The log-posterior, dropping constants, is
+  \[
+    -\frac{1}{2\sigma^2}\sum_{i=1}^{N} (x_i - \mu)^2
+    - \frac{1}{2\tau^2}(\mu - \mu_0)^2 .
+  \]
+  Its derivative with respect to $\mu$ is
+  \[
+    \frac{1}{\sigma^2}\sum_{i=1}^{N} (x_i - \mu) - \frac{1}{\tau^2}(\mu - \mu_0)
+    = \frac{N}{\sigma^2}(\bar{x} - \mu) - \frac{1}{\tau^2}(\mu - \mu_0) ,
+  \]
+  and setting it to zero gives
+  \[
+    \hat\mu_{\text{MAP}}
+    = \frac{\dfrac{N}{\sigma^2}\,\bar{x} + \dfrac{1}{\tau^2}\,\mu_0}
+           {\dfrac{N}{\sigma^2} + \dfrac{1}{\tau^2}} ,
+  \]
+  a weighted average of the sample mean and the prior mean. Here the
+  data weight is $N/\sigma^2 = 5/0.09 \approx 55.6$ and the prior weight
+  is $1/\tau^2 = 25$, so
+  \[
+    \hat\mu_{\text{MAP}} = \frac{55.6 \times 2.1 + 25 \times 2.5}{80.6}
+    \approx 2.22 .
+  \]
+  The data get about $69\%$ of the say and the prior $31\%$.
+\end{example}
+
+The weights in this example are \emph{precisions}, inverse variances,
+and they measure how much each source of information can be trusted. A
+precise prior (small $\tau$) or noisy data (large $\sigma$) shift the
+estimate toward $\mu_0$; more data (large $N$) shift it toward
+$\bar{x}$. Pulling an estimate from the raw data toward a prior value is
+called \emph{shrinkage}, and as $N \to \infty$ it disappears, just as in
+\Cref{tab:ch06-map-vs-mle}.
+
+\subsection{MAP in Machine Learning: Priors Are Regularizers}
+\label{sec:ch06-map-ml}
+
+Apply the MAP objective \eqref{eq:ch06-map-objective} to the weights of
+a model. The data-fit term is the negative log-likelihood, which
+\Cref{sec:ch06-mle-ml} identified as the usual training loss. The
+penalty term comes from the prior on the weights. So
+\[
+  \text{MAP training}
+  \quad=\quad
+  \text{loss} \;+\; \text{penalty on the weights}.
+\]
+Adding a penalty to the loss is called \emph{regularization}, and MAP
+explains where the common penalties come from.
+
+\paragraph{A Gaussian prior gives the $L_2$ penalty.}
+Take the linear regression model of \Cref{sec:ch06-mle-ml}, with noise
+$\mathcal{N}(0, \sigma^2)$, and put an independent Gaussian prior
+$\mathcal{N}(0, \tau^2)$ on each weight: before seeing data, we expect
+the weights to be small, of size about $\tau$. The log of this prior is
+$-\|\vect{w}\|^2/(2\tau^2)$ plus a constant. Multiplying the negative
+log-posterior by $2\sigma^2$, which does not move the minimum, gives
+\[
+  \sum_{i=1}^{N} (y_i - \vect{w}^\top\vect{x}_i)^2
+  + \lambda\,\|\vect{w}\|^2,
+  \qquad \lambda = \frac{\sigma^2}{\tau^2} .
+\]
+This is \emph{ridge regression}: least squares plus an $L_2$ penalty. The
+strength $\lambda$ has a meaning now. It is large when the data are noisy
+(large $\sigma$) or when we are confident the weights are small (small
+$\tau$). Setting the gradient to zero, as for least squares, gives the
+solution
+\begin{equation}
+  \hat{\vect{w}}_{\text{MAP}} = (X^\top X + \lambda I)^{-1} X^\top \vect{y},
+  \label{eq:ch06-ridge}
+\end{equation}
+where the rows of $X$ are the inputs $\vect{x}_i^\top$. The added
+$\lambda I$ has another benefit. When there are more weights than data
+points, or when features are nearly copies of each other, $X^\top X$ is
+singular or nearly so (\Cref{chap:ch03}), and least squares has no
+unique answer. Adding $\lambda I$ raises every eigenvalue by $\lambda$,
+so $X^\top X + \lambda I$ is always invertible. The penalty also makes the
+objective strongly convex (\Cref{sec:ch01-strict-strong}), so there is
+exactly one minimizer.
+
+\paragraph{A Laplace prior gives the $L_1$ penalty.}
+If instead each weight has the Laplace prior with density proportional
+to $e^{-|w_j|/s}$, the log-prior is $-\sum_j |w_j|/s$, and MAP becomes
+least squares plus $\lambda \sum_j |w_j|$, the \emph{lasso}. The Laplace
+density has a sharp peak at $0$, a strong belief that many weights are
+exactly zero, and the lasso solution reflects it: it sets many weights
+to exactly $0$, selecting a few features and discarding the rest.
+
+\begin{aibox}
+  \emph{Weight decay}, the \texttt{weight\_decay} argument of PyTorch's
+  optimizers, adds $\lambda\|\vect{w}\|^2$ (up to a factor of $2$) to the
+  loss of a neural network. In MAP terms, it is a Gaussian prior centered
+  at zero on every weight. Training with cross-entropy plus weight decay
+  is MAP estimation of the weights.
+
+  The prior does not have to be centered at zero. When fine-tuning a
+  pretrained model, a penalty $\lambda\|\vect{w} - \vect{w}_0\|^2$ that
+  pulls the weights toward the pretrained ones $\vect{w}_0$ is a
+  Gaussian prior centered at $\vect{w}_0$: ``the new task probably needs
+  weights close to the ones that already work''. And pseudo-counts appear
+  in language modeling as \emph{add-one} (Laplace) smoothing, which adds
+  $1$ to every word count so that a word never seen in training does not
+  get probability $0$. That is MAP with one pseudo-count per word, under
+  the many-class version of the Beta prior, the \emph{Dirichlet}. It is
+  the same fix that kept the coin from landing heads forever.
+\end{aibox}
+
+\subsection{MLE, MAP, and Beyond}
+\label{sec:ch06-map-compare}
+
+\Cref{tab:ch06-mle-map} sets the two methods side by side. They share
+the same machinery, a logarithm, a sum, and a maximization, and differ
+only in the prior term.
+
+\begin{table}[ht]
+  \centering
+  \small
+  \caption{Maximum likelihood and maximum a posteriori estimation.}
+  \label{tab:ch06-mle-map}
+  \begin{tabular}{@{}lll@{}}
+    \toprule
+    & MLE & MAP \\
+    \midrule
+    Maximizes & $\ell(\theta) = \log p(\mathcal{D} \mid \theta)$
+      & $\ell(\theta) + \log p(\theta)$ \\
+    Uses prior knowledge & no & yes, through $p(\theta)$ \\
+    In ML terms & minimize the loss & minimize loss $+$ penalty \\
+    Small data & can overfit, e.g.\ $\hat\theta = 1$ & pulled toward the prior \\
+    Large data & \multicolumn{2}{c}{the two agree} \\
+    Main risk & overfitting & a poorly chosen prior \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+MAP still returns a single number, the peak of the posterior, and throws
+away the rest of the distribution. In \Cref{fig:ch06-map}, the posterior
+after three flips is wide: values of $\theta$ from about $0.35$ to $0.85$
+remain plausible, and the single number $0.64$ hides that. Keeping the
+whole posterior, and averaging predictions over it, is \emph{Bayesian
+inference}. It answers questions such as ``how sure are we?'' that a
+point estimate cannot, at the price of more computation, since the
+evidence integral that MAP avoided usually has to be approximated. The
+posterior mean, $(a + k)/(a + b + N)$ for the coin, is another common
+point estimate taken from the full posterior; for three heads it is
+$8/13 \approx 0.62$.
+
+\begin{warning}
+  A prior is an assumption, and a wrong one biases the answer. A prior
+  that is very confident (large pseudo-counts, small $\tau$, large
+  $\lambda$) can overrule the data until $N$ is large. In practice the
+  strength of the prior, such as $\lambda$ in ridge regression, is not
+  derived from first principles but chosen by checking performance on
+  held-out validation data.
+\end{warning}
+
+\subsection{In Code: Priors, Posteriors, and Regularization}
+\label{sec:ch06-map-code}
+
+For the coin with a Beta prior, the posterior is the Beta distribution
+with updated counts, which \texttt{scipy.stats} provides directly. The
+MAP estimate is its peak:
+
+\begin{lstlisting}
+import numpy as np
+from scipy import stats, optimize
+
+a, b = 5, 5                         # prior Beta(5, 5): about fair
+k, N = 3, 3                         # three heads in three flips
+
+k / N                               # 1.0:   MLE
+(k + a - 1) / (N + a + b - 2)       # 0.636: MAP, the posterior's peak
+post = stats.beta(a + k, b + N - k) # posterior Beta(8, 5)
+post.mean()                         # 0.615: posterior mean
+post.interval(0.95)                 # (0.349, 0.848): still very uncertain
+\end{lstlisting}
+
+The last line makes the warning of \Cref{sec:ch06-map-compare} concrete:
+the posterior gives $95\%$ probability to an interval half a unit wide.
+When there is no formula, maximize the log-posterior numerically. The
+code is the negative log-likelihood of \Cref{sec:ch06-mle-code} with the
+negative log-prior added:
+
+\begin{lstlisting}
+def neg_log_post(theta):
+    log_lik = k * np.log(theta) + (N - k) * np.log(1 - theta)
+    log_prior = stats.beta(a, b).logpdf(theta)
+    return -(log_lik + log_prior)
+
+res = optimize.minimize_scalar(neg_log_post, bounds=(1e-6, 1 - 1e-6),
+                               method='bounded')
+res.x                               # 0.636: matches the formula
+\end{lstlisting}
+
+Finally, ridge regression shows the prior at work on a model. We draw
+$15$ true weights from the prior $\mathcal{N}(0, 1)$, generate only $20$
+noisy training examples, and fit with formula \eqref{eq:ch06-ridge} for
+several values of $\lambda$. The case $\lambda = 0$ is plain least
+squares, the MLE:
+
+\begin{lstlisting}
+rng = np.random.default_rng(0)
+d, N, sigma = 15, 20, 2.0
+w_true = rng.normal(0, 1, size=d)           # weights drawn from the prior
+
+def make_data(n):
+    X = rng.normal(size=(n, d))
+    return X, X @ w_true + rng.normal(0, sigma, size=n)
+
+X, y = make_data(N)                         # small training set
+X_test, y_test = make_data(10_000)          # large test set
+
+for lam in [0, 1, 4, 10, 100]:
+    w = np.linalg.solve(X.T @ X + lam * np.eye(d), X.T @ y)
+    train = np.mean((X @ w - y)**2)
+    test = np.mean((X_test @ w - y_test)**2)
+    print(lam, round(train, 2), round(test, 2))
+# lambda  train  test
+#   0     0.69   8.87    MLE: fits training data best, tests worst
+#   1     0.81   6.74
+#   4     1.32   7.31    lambda = sigma^2 / tau^2 from the true prior
+#  10     2.32   8.71
+# 100     8.48  14.16    prior too strong: weights shrunk too far
+\end{lstlisting}
+
+The pattern is the one this section predicts. Least squares fits the
+$20$ training points almost perfectly, with an error far below the noise
+variance $\sigma^2 = 4$, and does much worse on new data: it has fit the
+noise. A moderate prior gives up a little training error and gains a lot
+on the test set. A very strong prior shrinks the weights so far toward
+zero that the model underfits. The value $\lambda = 4$ that the true
+prior implies is good but, on this one small sample, not the best; that
+is why $\lambda$ is tuned on validation data in practice.
+\Cref{chap:ch09} studies this trade-off between fitting the data and
+staying simple in detail.
+
+\section{Summary}
+\label{sec:ch06-summary}
+
+\begin{itemize}
+  \item \emph{Estimation} runs probability backward: given data, find the
+    parameters of the distribution that produced it. Training a model is
+    estimation of its weights.
+  \item The \emph{likelihood} $L(\theta) = \prod_i p(x_i; \theta)$ is the
+    probability of the observed i.i.d.\ data, read as a function of the
+    parameter. It scores parameter values; it is not a probability
+    distribution over them.
+  \item The \emph{maximum likelihood estimate} maximizes the
+    log-likelihood $\ell(\theta) = \sum_i \log p(x_i; \theta)$, which has
+    the same peak as $L$ but turns products into sums and avoids
+    underflow. In practice we minimize the negative log-likelihood.
+  \item The recipe: choose a model, write the likelihood, take the log,
+    set the derivative or gradient to zero (or run gradient descent), and
+    check the result. It gives $\hat\theta = k/N$ for a coin, the sample
+    mean and the divide-by-$N$ variance for a Gaussian, and $\hat\lambda =
+    1/\bar{t}$ for an exponential.
+  \item Common losses are negative log-likelihoods. Gaussian noise gives
+    squared error, so least squares is maximum likelihood; Bernoulli and
+    categorical labels give binary and categorical cross-entropy, with
+    gradient $(\hat{p} - y)\,\vect{x}$ for logistic regression. Choosing
+    a loss is choosing a noise model.
+  \item Maximum likelihood trusts the data completely. With little data
+    it overfits, as when three heads give $\hat\theta = 1$, and it is
+    only as good as the chosen model family.
+  \item The \emph{maximum a posteriori} estimate maximizes the posterior
+    $p(\theta \mid \mathcal{D}) \propto p(\mathcal{D} \mid \theta)\,
+    p(\theta)$, that is, the log-likelihood plus the log-prior. The
+    evidence $p(\mathcal{D})$ does not depend on $\theta$ and can be
+    ignored. A flat prior gives back the MLE.
+  \item A $\text{Beta}(a, b)$ prior on a coin acts as $a - 1$ imagined
+    heads and $b - 1$ imagined tails, giving $\hat\theta_{\text{MAP}} =
+    (k + a - 1)/(N + a + b - 2)$. A Gaussian prior on a Gaussian mean
+    gives a precision-weighted average of the sample mean and the prior
+    mean. In both, the prior dominates when data are scarce, and MAP
+    approaches MLE as $N$ grows.
+  \item Priors on weights are regularizers: MAP training is loss plus
+    penalty. A Gaussian prior gives the $L_2$ penalty (ridge regression,
+    weight decay), with $\lambda = \sigma^2/\tau^2$, and a Laplace prior
+    gives the $L_1$ penalty (the lasso), which sets many weights to zero.
+  \item MAP returns only the peak of the posterior and hides how
+    uncertain the estimate is; Bayesian inference keeps the whole
+    posterior. A prior is an assumption, so its strength, such as
+    $\lambda$, is usually tuned on validation data.
+\end{itemize}
+
+Deisenroth, Faisal, and Ong~\cite{deisenroth2020mml} treat maximum
+likelihood, MAP, and their connection to regularization at greater
+length.

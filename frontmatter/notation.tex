@@ -1,0 +1,271 @@
+\chapter{Mathematical Symbols}
+\raggedbottom
+
+This page lists the symbols used in the book, grouped by topic, with
+how to read each one aloud and what it means in plain words. You do not
+need to learn it in advance. Come back to it whenever a formula uses a
+symbol you do not recognize; the chapter where a symbol is introduced
+explains it properly.
+
+A few conventions hold throughout.
+\begin{itemize}
+  \item Ordinary numbers are lowercase italic letters: $x$, $a$, $b$.
+  \item Vectors are lowercase \emph{bold} letters: $\vect{x}$, $\vect{w}$,
+    $\vect{\mu}$.
+  \item Matrices are uppercase letters: $A$, $X$, $\Sigma$.
+  \item Random variables are uppercase letters, and the values they take
+    are the matching lowercase letters: $X$ and $x$.
+  \item Parameters that a model learns or that describe a distribution
+    are usually Greek letters: $\theta$, $\mu$, $\sigma$, $\lambda$.
+  \item A hat marks something estimated or predicted from data:
+    $\hat\theta$, $\hat{y}$.
+\end{itemize}
+
+\newcommand{\symtable}[1]{%
+  \par\smallskip
+  \begin{center}\small
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{0.17\textwidth}
+      >{\raggedright\arraybackslash}p{0.25\textwidth}
+      >{\raggedright\arraybackslash}p{0.52\textwidth}@{}}
+    \toprule
+    Symbol & Read as & Meaning \\
+    \midrule
+    #1
+    \bottomrule
+  \end{tabular}
+  \end{center}}
+
+\section*{Numbers, Sets, and Comparisons}
+
+\symtable{
+  $\R$ & ``the reals'' & All ordinary numbers, positive, negative, and
+    zero, including fractions and decimals. \\
+  $\R^n$ & ``R n'' & All lists (vectors) of $n$ real numbers. \\
+  $x \in S$ & ``$x$ in $S$'' & $x$ is one of the members of the set
+    $S$. \\
+  $S \subset T$ & ``$S$ subset of $T$'' & Every member of $S$ is also in
+    $T$. \\
+  $\{1, 2, 3\}$ & ``the set 1, 2, 3'' & A set, listed by its members. \\
+  $[a, b]$, $(a, b)$ & ``closed / open interval'' & All numbers from $a$ to
+    $b$; square brackets include the ends, round ones leave them out. \\
+  $\infty$ & ``infinity'' & Larger than every number; $(0, \infty)$ means
+    all positive numbers. \\
+  $|x|$ & ``absolute value of $x$'' & The size of $x$ without its sign:
+    $|{-3}| = 3$. \\
+  $=$, $\ne$, $\approx$ & ``equals, not equal, approximately'' & Exactly
+    the same, different, close enough for the purpose. \\
+  $<$, $\le$, $>$, $\ge$ & ``less than, at most, \dots'' & Comparisons;
+    the line underneath allows equality. \\
+  $\propto$ & ``proportional to'' & Equal up to a constant factor that we
+    do not care about. \\
+  $\Rightarrow$, $\Leftrightarrow$ & ``implies, if and only if'' & The left
+    side leads to the right; the two sides say the same thing. \\
+  $n!$ & ``$n$ factorial'' & $1 \times 2 \times \dots \times n$; for example,
+    $4! = 24$. \\
+  $\binom{n}{k}$ & ``$n$ choose $k$'' & The number of ways to pick $k$ items
+    out of $n$. \\
+  $\Delta_n$ & ``the simplex'' & All vectors of $n$ nonnegative numbers
+    that add up to $1$: the valid probability vectors. \\
+}
+
+\section*{Functions}
+
+\symtable{
+  $f(x)$ & ``$f$ of $x$'' & The output of the function $f$ for the input
+    $x$. \\
+  $f\colon A \to B$ & ``$f$ from $A$ to $B$'' & $f$ takes inputs from the
+    set $A$ and returns outputs in the set $B$. \\
+  $x \mapsto x^2$ & ``$x$ maps to $x$ squared'' & A function written by
+    showing what it does to an input. \\
+  $\dom f$ & ``domain of $f$'' & The inputs for which $f$ is defined. \\
+  $\epi f$ & ``epigraph of $f$'' & All points on or above the graph of
+    $f$. \\
+  $e^x$, $\exp(x)$ & ``e to the $x$'' & The exponential function, with $e
+    \approx 2.718$. \\
+  $\log x$ & ``log $x$'' & The natural logarithm, the inverse of $e^x$:
+    $\log e^x = x$. \\
+  $\max$, $\min$ & ``max, min'' & The largest or smallest value. \\
+  $\operatorname*{arg\,max}$, $\operatorname*{arg\,min}$ & ``arg max, arg
+    min'' & The \emph{input} at which the largest or smallest value is
+    reached, not the value itself. \\
+  $x^\star$ & ``$x$ star'' & The best input, usually a minimizer. \\
+  $\sigma(z)$ & ``sigmoid of $z$'' & $1/(1 + e^{-z})$: squashes any number
+    into $(0, 1)$. \\
+  $\operatorname{ReLU}(z)$ & ``ReLU'' & $\max(0, z)$: keeps positive
+    numbers, turns negative ones into $0$. \\
+  $\operatorname{softmax}(\vect{z})$ & ``softmax'' & Turns a vector of
+    scores into a probability vector. \\
+  $\operatorname{sign}(x)$ & ``sign of $x$'' & $1$ if $x > 0$, $-1$ if $x
+    < 0$, $0$ if $x = 0$. \\
+}
+
+\section*{Sums, Products, and Calculus}
+
+\symtable{
+  $\sum_{i=1}^{n} a_i$ & ``sum from $i = 1$ to $n$'' & $a_1 + a_2 + \dots +
+    a_n$. \\
+  $\prod_{i=1}^{n} a_i$ & ``product from $i = 1$ to $n$'' & $a_1 \times a_2
+    \times \dots \times a_n$. \\
+  $\lim_{h \to 0}$ & ``limit as $h$ goes to $0$'' & The value something
+    approaches as $h$ gets closer and closer to $0$. \\
+  $f'(x)$ & ``$f$ prime of $x$'' & The derivative: the slope of $f$ at $x$,
+    how fast $f$ changes. \\
+  $f''(x)$ & ``$f$ double prime'' & The second derivative: how fast the
+    slope changes, which measures curvature. \\
+  $\dfrac{\partial f}{\partial x_i}$ & ``partial $f$, partial $x_i$'' & The
+    slope of $f$ along one input $x_i$, holding the others fixed. \\
+  $\nabla f$ & ``gradient of $f$'' & The vector of all partial
+    derivatives; it points in the direction of steepest increase. \\
+  $\int_a^b f(x)\,dx$ & ``integral from $a$ to $b$'' & The area under the
+    graph of $f$ between $a$ and $b$. \\
+  $\eta$ & ``eta'' & The learning rate, the step size of gradient
+    descent. \\
+  $x_k$ & ``$x$ sub $k$'' & In an algorithm, the value after $k$ steps. \\
+  $w \leftarrow w - \eta g$ & ``$w$ becomes \dots'' & Update: replace $w$ by
+    the value on the right. \\
+}
+
+\section*{Vectors and Matrices}
+
+\symtable{
+  $\vect{x}$ & ``vector $x$'' & A list of numbers, $(x_1, \dots, x_n)$,
+    treated as a column. \\
+  $x_i$ & ``$x$ sub $i$'' & The $i$th entry of the vector $\vect{x}$. \\
+  $\vect{x}_i$ & ``$x$ sub $i$'' (bold) & The $i$th vector in a list, such as
+    the $i$th data point. \\
+  $A$, $a_{ij}$ & ``$A$; $a$ sub $i j$'' & A matrix, a grid of numbers; the
+    entry in row $i$, column $j$. \\
+  $A^\top$, $\vect{x}^\top$ & ``$A$ transpose'' & Rows and columns swapped;
+    $\vect{x}^\top$ is $\vect{x}$ written as a row. \\
+  $\vect{x}^\top\vect{y}$, $\vect{x} \cdot \vect{y}$, $\langle \vect{x},
+    \vect{y} \rangle$ & ``$x$ dot $y$'' & The dot product: multiply
+    matching entries and add. Measures how aligned two vectors are. \\
+  $\|\vect{x}\|$ & ``norm of $x$'' & The length of $\vect{x}$,
+    $\sqrt{x_1^2 + \dots + x_n^2}$. \\
+  $I$ & ``the identity'' & The matrix that leaves every vector unchanged:
+    $1$s on the diagonal, $0$s elsewhere. \\
+  $A^{-1}$ & ``$A$ inverse'' & The matrix that undoes $A$:
+    $A^{-1}A = I$. \\
+  $\det A$ & ``determinant of $A$'' & How much $A$ scales area or volume;
+    $0$ means $A$ squashes space flat. \\
+  $\operatorname{tr} A$ & ``trace of $A$'' & The sum of the diagonal
+    entries. \\
+  $\operatorname{diag}(\dots)$ & ``diag'' & A matrix with the given numbers
+    on the diagonal and $0$s elsewhere. \\
+  $A \odot B$ & ``$A$ Hadamard $B$'' & Multiply matching entries, one by
+    one. \\
+  $\operatorname{proj}$ & ``projection'' & The shadow of one vector on a
+    line or plane. \\
+  $\lambda$, $\vect{v}$ & ``lambda; $v$'' & An eigenvalue and eigenvector:
+    $A\vect{v} = \lambda\vect{v}$, so $A$ only stretches $\vect{v}$. \\
+  $Q\Lambda Q^\top$ & ``$Q$ Lambda $Q$ transpose'' & Eigendecomposition of
+    a symmetric matrix: rotate, stretch, rotate back. \\
+  $U\Sigma V^\top$, $\sigma_i$ & ``$U$ Sigma $V$ transpose'' & The singular
+    value decomposition; the $\sigma_i$ are the singular values, the
+    stretch factors. \\
+  $X$, $\tilde{X}$ & ``$X$; $X$ tilde'' & The data matrix, one data point
+    per row; the same data with the mean subtracted. \\
+}
+
+\section*{Probability}
+
+\symtable{
+  $\Omega$, $\omega$ & ``omega'' & The sample space, all possible
+    outcomes; one outcome. \\
+  $P(A)$ & ``probability of $A$'' & How likely the event $A$ is, from $0$
+    (never) to $1$ (always). \\
+  $A \cap B$ & ``$A$ and $B$'' & The event that both $A$ and $B$
+    happen. \\
+  $A^c$ & ``not $A$'' & The event that $A$ does not happen. \\
+  $P(A \mid B)$ & ``probability of $A$ given $B$'' & How likely $A$ is once
+    we know that $B$ happened. \\
+  $X$, $x$ & ``big $X$, small $x$'' & A random variable, and a particular
+    value it can take. \\
+  $p(x)$ & ``p of $x$'' & The probability of the value $x$ (discrete), or
+    the density at $x$ (continuous). \\
+  $p(x; \theta)$ & ``p of $x$ with parameter $\theta$'' & A distribution
+    that depends on the parameter $\theta$. \\
+  $p(x \mid y)$ & ``p of $x$ given $y$'' & The distribution of $x$ once
+    $y$ is known. \\
+  $F_X(x)$ & ``CDF of $X$'' & $P(X \le x)$: the probability of a value at
+    most $x$. \\
+  $X \sim \dots$ & ``$X$ is distributed as'' & Names the distribution
+    $X$ follows. \\
+  $\E[X]$ & ``expected value of $X$'' & The mean: the probability-weighted
+    average value. \\
+  $\operatorname{Var}(X)$ & ``variance of $X$'' & The average squared
+    distance from the mean: how spread out $X$ is. \\
+  $\mu$, $\sigma$, $\sigma^2$ & ``mu, sigma, sigma squared'' & Mean,
+    standard deviation, variance. \\
+  $\mathcal{N}(\mu, \sigma^2)$ & ``normal with mean $\mu$ \dots'' & The
+    Gaussian (bell curve) distribution. \\
+  $\mathcal{N}(\vect{\mu}, \Sigma)$ & ``multivariate normal'' & A Gaussian
+    over vectors, with mean vector $\vect{\mu}$ and covariance matrix
+    $\Sigma$. \\
+  $\Sigma$ & ``Sigma'' & The covariance matrix: variances on the diagonal,
+    how coordinates move together elsewhere. \\
+  $\text{Beta}(a, b)$ & ``Beta'' & A distribution over numbers between $0$
+    and $1$, used as a prior for a probability. \\
+  i.i.d. & ``independent and identically distributed'' & Data points drawn
+    separately from the same distribution. \\
+}
+
+\section*{Statistics and Learning}
+
+\symtable{
+  $\mathcal{D}$ & ``the data'' & The observed data set. \\
+  $N$ & ``N'' & The number of data points. \\
+  $\theta$ & ``theta'' & An unknown parameter we want to learn. \\
+  $\hat\theta$ & ``theta hat'' & An estimate of $\theta$ computed from
+    data. \\
+  $\bar{x}$ & ``$x$ bar'' & The sample mean, the average of the data. \\
+  $L(\theta)$ & ``likelihood'' & How probable the observed data are if the
+    parameter is $\theta$. \\
+  $\ell(\theta)$ & ``log-likelihood'' & $\log L(\theta)$: the same
+    information, as a sum instead of a product. \\
+  $\hat\theta_{\text{MLE}}$, $\hat\theta_{\text{MAP}}$ & ``theta MLE, theta
+    MAP'' & The maximum likelihood and maximum a posteriori estimates. \\
+  $p(\theta)$, $p(\theta \mid \mathcal{D})$ & ``prior, posterior'' & What we
+    believe about $\theta$ before and after seeing the data. \\
+  $\vect{w}$, $b$ & ``weights, bias'' & The learned parameters of a model
+    such as $\vect{w}^\top\vect{x} + b$. \\
+  $y$, $\hat{y}$ & ``$y$, $y$ hat'' & The true label or target; the model's
+    prediction. \\
+  $\varepsilon$ & ``epsilon'' & Random noise, the part of $y$ the model
+    cannot predict. \\
+  $\lambda$ & ``lambda'' & The strength of a regularization penalty. \\
+}
+
+\section*{Greek Letters}
+
+Greek letters are just names, like variable names in code. These are
+the ones the book uses, with their usual job.
+
+\symtable{
+  $\alpha$ & alpha & An angle, such as the angle between two vectors. \\
+  $\Delta$ & delta (capital) & A small change, as in $\Delta x$; $\Delta_n$
+    is the simplex. \\
+  $\varepsilon$ & epsilon & Random noise. \\
+  $\eta$ & eta & Learning rate. \\
+  $\theta$ & theta & A parameter; a probability of heads. \\
+  $\lambda$, $\Lambda$ & lambda & Eigenvalue; rate of an exponential
+    distribution; regularization strength. $\Lambda$ is a diagonal matrix
+    of eigenvalues. \\
+  $\mu$ & mu & Mean. \\
+  $\pi$ & pi & The constant $3.14159\ldots$ \\
+  $\sigma$, $\Sigma$ & sigma & Standard deviation; the sigmoid function;
+    a singular value. $\Sigma$ is a covariance matrix, the middle factor
+    of the SVD, or, written large as $\sum$, a sum. \\
+  $\tau$ & tau & A standard deviation, usually of a prior. \\
+  $\omega$, $\Omega$ & omega & An outcome; the sample space. \\
+}
+
+\begin{note}
+  Some symbols have more than one job, as names do in code that reuses
+  short variable names in different functions. The most common are
+  $\sigma$ (standard deviation, sigmoid, singular value), $\Sigma$
+  (covariance, SVD factor, sum), and $\lambda$ (eigenvalue, rate,
+  regularization strength). The surrounding text always makes clear
+  which one is meant.
+\end{note}
+\flushbottom

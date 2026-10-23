@@ -1154,3 +1154,584 @@ z = rng.standard_normal(100_000)
 x = m + s * z                     # samples of N(1.5, 0.25)
 x.mean(), x.std()                 # 1.499, 0.500
 \end{lstlisting}
+
+\section{Conditional Probability and Bayes' Rule}
+\label{sec:ch05-bayes}
+
+So far each probability has been computed once, before anything is
+known about the outcome. In practice, information keeps arriving. A
+spam filter sees the words of an email before deciding whether it is
+spam; a doctor sees a test result before judging whether a patient is
+ill; a language model sees the first words of a sentence before
+predicting the next one. Each piece of evidence should change how
+likely the possibilities are. This section makes ``the probability of
+$A$, given that we know $B$'' precise, and derives from it Bayes' rule,
+the formula that turns evidence into updated beliefs.
+
+\subsection{Conditional Probability}
+\label{sec:ch05-conditional}
+
+Roll two fair dice again, and let $A$ be the event that the sum is at
+least $10$. Six of the $36$ pairs qualify,
+\[
+  A = \{(4, 6), (5, 5), (5, 6), (6, 4), (6, 5), (6, 6)\},
+\]
+so $P(A) = 6/36 = 1/6$. Now suppose we are told that the first die shows
+at least $5$; call this event $B$. That rules out every pair whose first
+entry is $1$, $2$, $3$, or $4$. Only the $12$ pairs of $B$ remain
+possible, they are still equally likely, and $5$ of them lie in $A$
+(\Cref{fig:ch05-conditional}). The probability of $A$ in light of this
+news is $5/12$, more than double the $1/6$ we started with.
+
+The calculation did two things: it threw away the outcomes outside $B$,
+and it rescaled the probabilities of those left so that they again add
+up to $1$. In general, the new information shrinks the sample space to
+$B$, and the part of $A$ that survives is $A \cap B$.
+
+\begin{definition}[Conditional probability]
+  \label{def:conditional}
+  For events $A$ and $B$ with $P(B) > 0$, the \emph{conditional
+  probability of $A$ given $B$} is
+  \[
+    P(A \mid B) = \frac{P(A \cap B)}{P(B)} .
+  \]
+\end{definition}
+
+For the dice, $P(A \cap B) = 5/36$ and $P(B) = 12/36$, so $P(A \mid B) =
+5/12$, as found by counting. Dividing by $P(B)$ is the rescaling step:
+as a function of $A$, the conditional probability $P(\,\cdot \mid B)$
+satisfies all three rules of \Cref{sec:ch05-rv-def}, with $P(B \mid B) =
+1$ in place of $P(\Omega) = 1$. It is a genuine probability, one that
+lives on $B$. The requirement $P(B) > 0$ is there because conditioning
+on something that cannot happen has no meaning.
+
+\begin{figure}[ht]
+  \centering
+  \begin{tikzpicture}[scale=0.62]
+    \fill[blue!12] (4,0) rectangle (6,6);
+    \draw[gray!50] (0,0) grid (6,6);
+    \draw[very thick, blue!60!black] (4,0) rectangle (6,6);
+    \foreach \i in {1,...,6} {
+      \node[font=\scriptsize] at (\i-0.5,-0.45) {\i};
+      \node[font=\scriptsize] at (-0.45,\i-0.5) {\i};
+    }
+    \node[font=\small] at (3,-1.2) {first die};
+    \node[font=\small, rotate=90] at (-1.2,3) {second die};
+    \foreach \p in {(3.5,5.5), (4.5,4.5), (4.5,5.5), (5.5,3.5), (5.5,4.5),
+      (5.5,5.5)}
+      \fill[accent] \p circle (5pt);
+    \node[font=\small, blue!60!black, anchor=west] at (6.3,1.5)
+      {$B$: first die $\ge 5$};
+    \node[font=\small, accent, anchor=west] at (6.3,4.5)
+      {$A$: sum $\ge 10$};
+  \end{tikzpicture}
+  \caption{Conditioning on an event. Each square is one of the $36$
+    equally likely pairs of dice. The event $A$ (red dots) has $6$ of the
+    $36$ squares, so $P(A) = 1/6$. Once we know that $B$ (blue) has
+    happened, only its $12$ squares remain possible, and $5$ of them are
+    in $A$, so $P(A \mid B) = 5/12$.}
+  \label{fig:ch05-conditional}
+\end{figure}
+
+Conditioning is not symmetric. Among the $6$ pairs of $A$, the $5$ that
+lie in $B$ give $P(B \mid A) = 5/6$: a large sum makes a large first die
+very likely, while a large first die makes a large sum only somewhat
+likely. The two numbers answer different questions, and confusing them
+is one of the most common errors in reasoning about probability.
+
+\begin{warning}
+  $P(A \mid B)$ and $P(B \mid A)$ are different quantities, and they can
+  be wildly different. Almost every professional basketball player is
+  tall, so $P(\text{tall} \mid \text{plays in the NBA})$ is close to
+  $1$, yet $P(\text{plays in the NBA} \mid \text{tall})$ is tiny.
+  Bayes' rule, below, is the correct way to get from one to the other.
+\end{warning}
+
+\paragraph{The product rule.}
+Multiplying the definition through by $P(B)$ turns it around:
+\begin{equation}
+  P(A \cap B) = P(A \mid B)\, P(B) .
+  \label{eq:ch05-product-rule}
+\end{equation}
+This \emph{product rule} computes the probability that two things happen
+as ``the chance the first happens, times the chance the second happens
+given the first''. The roles of $A$ and $B$ can be swapped, since $A
+\cap B = B \cap A$, so also $P(A \cap B) = P(B \mid A)\,P(A)$. Applied
+repeatedly, it breaks the probability of many events into a chain of
+conditional probabilities, the \emph{chain rule of probability}:
+\begin{equation}
+  P(A_1 \cap A_2 \cap \dots \cap A_n)
+  = P(A_1)\, P(A_2 \mid A_1)\, P(A_3 \mid A_1 \cap A_2) \cdots
+    P(A_n \mid A_1 \cap \dots \cap A_{n-1}) .
+  \label{eq:ch05-chain-rule}
+\end{equation}
+For example, the probability of drawing two aces in a row from a
+shuffled deck of $52$ cards, without putting the first back, is
+$\frac{4}{52} \cdot \frac{3}{51} = \frac{1}{221}$: the second factor is
+a conditional probability, because after one ace is gone only $3$ of
+the remaining $51$ cards are aces.
+
+\begin{aibox}
+  The chain rule is the definition of a language model. The probability
+  of a sentence $w_1 w_2 \dots w_n$ is
+  \[
+    P(w_1, \dots, w_n) = \prod_{t=1}^{n} P(w_t \mid w_1, \dots, w_{t-1}),
+  \]
+  with no approximation at all. A model such as GPT learns only the
+  factors: given the words so far, it outputs a categorical distribution
+  over the next one. Generating text samples $w_1$, then $w_2$ given
+  $w_1$, and so on, one conditional at a time. If the model gives
+  ``The'' probability $0.05$ at the start, ``cat'' probability $0.01$
+  after ``The'', and ``sat'' probability $0.2$ after ``The cat'', then
+  it gives ``The cat sat'' probability $0.05 \times 0.01 \times 0.2 =
+  10^{-4}$. Training maximizes the logarithm of this product, a sum of
+  log-probabilities, one per token.
+\end{aibox}
+
+\subsection{The Law of Total Probability}
+\label{sec:ch05-total-prob}
+
+Often the conditional probabilities are what we know, and the plain
+probability is what we want. Suppose $B_1, \dots, B_K$ \emph{partition}
+the sample space: exactly one of them happens, so no two can happen
+together and between them they cover every outcome. Then any event $A$
+splits into the pieces $A \cap B_1, \dots, A \cap B_K$, no two of which
+overlap. Adding their probabilities, and writing each one with the
+product rule, gives the \emph{law of total probability}:
+\begin{equation}
+  P(A) = \sum_{k=1}^{K} P(A \cap B_k)
+  = \sum_{k=1}^{K} P(A \mid B_k)\, P(B_k) .
+  \label{eq:ch05-total-prob}
+\end{equation}
+The probability of $A$ is a weighted average of its conditional
+probabilities in each case, weighted by how likely each case is. The
+most common partition has two pieces, $B$ and its complement $B^c$
+(``not $B$''):
+\[
+  P(A) = P(A \mid B)\, P(B) + P(A \mid B^c)\, P(B^c) .
+\]
+
+For instance, $1\%$ of the people in a population have a certain
+disease. A test for it comes back positive for $99\%$ of the people who
+have the disease, and, by mistake, for $5\%$ of those who do not. Let $D$
+be the event of having the disease and $+$ the event of a positive test.
+Then
+\[
+  P(+) = P(+ \mid D)\, P(D) + P(+ \mid D^c)\, P(D^c)
+  = 0.99 \times 0.01 + 0.05 \times 0.99 = 0.0594 .
+\]
+About $6\%$ of all tests come back positive. Most of them, $0.0495$ out
+of $0.0594$, come from healthy people, simply because there are so many
+more healthy people to make mistakes on. Hold on to this observation; it
+is the heart of the next subsection.
+
+\subsection{Independence}
+\label{sec:ch05-independence}
+
+Sometimes the news does not change anything. Knowing that the first die
+shows $2$, what is the probability that the sum is $7$? The second die
+must show $5$, which happens with probability $1/6$, the same as $P(S =
+7)$ with no information. The same is true whatever the first die shows:
+each value leaves exactly one way to reach $7$. The first die, on its
+own, says nothing about whether the sum will be $7$.
+
+\begin{definition}[Independence]
+  \label{def:independence}
+  Events $A$ and $B$ are \emph{independent} if
+  \[
+    P(A \cap B) = P(A)\, P(B) .
+  \]
+  When $P(B) > 0$, this is the same as $P(A \mid B) = P(A)$: learning
+  that $B$ happened does not change the probability of $A$. Random
+  variables $X$ and $Y$ are independent if $\{X \in S\}$ and $\{Y \in
+  T\}$ are independent events for all sets of values $S$ and $T$.
+\end{definition}
+
+The product form is the official definition because it is symmetric
+and still makes sense when $P(B) = 0$. Dividing it by $P(B)$ gives the
+conditional form, so the two agree whenever both apply. For the dice,
+$P(S = 7 \text{ and first die} = 2) = 1/36 = \frac16 \cdot \frac16$,
+so the two events are independent. On the other hand, $S \ge 10$ and
+``first die $\ge 5$'' are not: $P(A \mid B) = 5/12 \ne 1/6 = P(A)$.
+
+Independence is what made the binomial distribution of
+\Cref{sec:ch05-binomial} work. For independent trials, the product rule
+needs no conditioning, $P(A_1 \cap \dots \cap A_n) = P(A_1) \cdots
+P(A_n)$, which is why a sequence of $k$ successes and $n - k$ failures
+had probability $\theta^k(1 - \theta)^{n - k}$. It is also what
+justified writing the density of $\vect{z} \sim \mathcal{N}(\vect{0}, I)$
+in \Cref{sec:ch05-mvn} as a product of one-dimensional densities.
+
+\begin{note}
+  Independence is a statement about probabilities, not about whether
+  the events can happen together. Events that cannot happen together,
+  such as ``the die shows $1$'' and ``the die shows $2$'', are as far
+  from independent as possible: if one happens, the other has
+  probability $0$.
+\end{note}
+
+\subsection{Bayes' Rule}
+\label{sec:ch05-bayes-rule}
+
+We now come to the formula that reverses a conditional probability.
+It follows from the definition of conditional probability in three
+lines.
+
+\begin{theorem}[Bayes' rule]
+  \label{thm:bayes}
+  For events $A$ and $B$ with $P(A) > 0$ and $P(B) > 0$,
+  \[
+    P(A \mid B) = \frac{P(B \mid A)\, P(A)}{P(B)} .
+  \]
+  If $A_1, \dots, A_K$ partition the sample space and each $P(A_k) > 0$,
+  then for each $j$,
+  \[
+    P(A_j \mid B)
+    = \frac{P(B \mid A_j)\, P(A_j)}{\sum_{k=1}^{K} P(B \mid A_k)\, P(A_k)} .
+  \]
+\end{theorem}
+
+\begin{proof}
+  The event ``$A$ and $B$ both happen'' can be described starting from
+  either event. By \Cref{def:conditional}, applied once with $B$ as the
+  condition and once with $A$,
+  \[
+    P(A \mid B) = \frac{P(A \cap B)}{P(B)},
+    \qquad
+    P(B \mid A) = \frac{P(A \cap B)}{P(A)} .
+  \]
+  Multiplying each equation by its denominator expresses the same
+  number, $P(A \cap B)$, in two ways:
+  \[
+    P(A \mid B)\, P(B) = P(A \cap B) = P(B \mid A)\, P(A) .
+  \]
+  Dividing the outer two expressions by $P(B) > 0$ gives the first
+  formula. For the second, apply the first with $A = A_j$, and expand the
+  denominator $P(B)$ by the law of total probability
+  \eqref{eq:ch05-total-prob} over the partition $A_1, \dots, A_K$.
+\end{proof}
+
+That is the entire derivation: the joint probability $P(A \cap B)$ can
+be factored in two orders, and equating the two factorizations lets us
+solve for the conditional we want in terms of the one we know. Nothing
+beyond the definition of conditional probability is needed.
+
+The terms of Bayes' rule have names, which come from reading $A$ as a
+hypothesis about the world and $B$ as observed evidence:
+\[
+  \underbrace{P(A \mid B)}_{\text{posterior}}
+  = \frac{\overbrace{P(B \mid A)}^{\text{likelihood}}\;
+          \overbrace{P(A)}^{\text{prior}}}
+         {\underbrace{P(B)}_{\text{evidence}}} .
+\]
+\begin{itemize}
+  \item The \emph{prior} $P(A)$ is how plausible the hypothesis is before
+    seeing the evidence.
+  \item The \emph{likelihood} $P(B \mid A)$ is how well the hypothesis
+    predicts the evidence: how probable the observation would be if
+    the hypothesis were true.
+  \item The \emph{evidence} $P(B)$ is the total probability of the
+    observation, summed over all hypotheses. It does not depend on which
+    hypothesis we are asking about, so it only rescales the posteriors
+    so that they add up to $1$.
+  \item The \emph{posterior} $P(A \mid B)$ is the updated plausibility of
+    the hypothesis after the evidence.
+\end{itemize}
+Since the evidence is the same for every hypothesis, the rule is often
+written as a proportionality,
+\begin{equation}
+  \text{posterior} \;\propto\; \text{likelihood} \times \text{prior},
+  \label{eq:ch05-bayes-prop}
+\end{equation}
+with the understanding that the products are then divided by their sum.
+A hypothesis ends up probable if it was plausible to begin with
+\emph{and} it explains the data well; either one alone is not enough.
+
+\begin{example}
+  \label{ex:ch05-disease}
+  Return to the disease test of \Cref{sec:ch05-total-prob}: prevalence
+  $P(D) = 0.01$, sensitivity $P(+ \mid D) = 0.99$, and false positive
+  rate $P(+ \mid D^c) = 0.05$. A patient tests positive. How likely is
+  it that they have the disease? Bayes' rule, with the evidence $P(+) =
+  0.0594$ computed earlier, gives
+  \[
+    P(D \mid +) = \frac{P(+ \mid D)\, P(D)}{P(+)}
+    = \frac{0.99 \times 0.01}{0.0594} = \frac{0.0099}{0.0594}
+    = \frac16 \approx 0.167 .
+  \]
+  A positive result from a test that is right $99\%$ of the time on sick
+  people leaves only a $17\%$ chance of disease. The likelihood strongly
+  favors the disease, but the prior strongly favors health, and the
+  prior wins because the disease is rare.
+
+  Now the patient takes a second, independent test, which also comes
+  back positive. The posterior after the first test becomes the prior
+  for the second, $P(D) = 1/6$:
+  \[
+    P(D \mid {+}{+}) =
+    \frac{0.99 \times \frac16}{0.99 \times \frac16 + 0.05 \times \frac56}
+    = \frac{0.165}{0.2067} \approx 0.80 .
+  \]
+  Two positive tests take the probability from $1\%$ to $80\%$. Each
+  new piece of evidence updates the previous posterior.
+\end{example}
+
+The numbers become intuitive when they are turned into counts
+(\Cref{fig:ch05-bayes-tree}). Picture $10{,}000$ people. On average
+$100$ of them are sick, and $99$ of those test positive. Of the $9{,}900$
+healthy people, $5\%$, that is $495$, also test positive. So $594$ people
+test positive, and only $99$ of them, one in six, are sick. The rule
+simply picks out, among everyone who could have produced the evidence,
+the fraction who satisfy the hypothesis.
+
+\begin{figure}[ht]
+  \centering
+  \begin{tikzpicture}[
+      every node/.style={font=\small, align=center},
+      box/.style={draw=gray!60, rounded corners=2pt, inner sep=3pt,
+        minimum width=6.2em},
+      posbox/.style={box, fill=accent!15, draw=accent},
+      edge/.style={gray!70, thick},
+      lab/.style={font=\scriptsize, text=ink, inner sep=1pt}]
+    \node[box] (all) at (0,0) {$10{,}000$\\people};
+    \node[box] (s) at (4,1.3) {$100$ sick};
+    \node[box] (h) at (4,-1.3) {$9{,}900$ healthy};
+    \node[posbox] (sp) at (8.4,1.95) {$99$ test $+$};
+    \node[box] (sn) at (8.4,0.65) {$1$ test $-$};
+    \node[posbox] (hp) at (8.4,-0.65) {$495$ test $+$};
+    \node[box] (hn) at (8.4,-1.95) {$9{,}405$ test $-$};
+    \draw[edge] (all.east) -- node[lab, above, sloped] {$1\%$} (s.west);
+    \draw[edge] (all.east) -- node[lab, below, sloped] {$99\%$} (h.west);
+    \draw[edge] (s.east) -- node[lab, above, sloped] {$99\%$} (sp.west);
+    \draw[edge] (s.east) -- node[lab, below, sloped] {$1\%$} (sn.west);
+    \draw[edge] (h.east) -- node[lab, above, sloped] {$5\%$} (hp.west);
+    \draw[edge] (h.east) -- node[lab, below, sloped] {$95\%$} (hn.west);
+  \end{tikzpicture}
+  \caption{The disease test of \Cref{ex:ch05-disease} as counts. Of the
+    $99 + 495 = 594$ people who test positive (red), $99$ are sick, so
+    $P(D \mid +) = 99/594 = 1/6$. The rare disease supplies few true
+    positives; the large healthy group supplies many false ones.}
+  \label{fig:ch05-bayes-tree}
+\end{figure}
+
+Ignoring the prior and reading $P(+ \mid D) = 0.99$ as if it were $P(D
+\mid +)$ is called the \emph{base rate fallacy}. It is exactly the
+confusion of $P(A \mid B)$ with $P(B \mid A)$ that the warning above
+describes, and Bayes' rule shows that the gap between the two is the
+ratio $P(A)/P(B)$, here $0.01/0.0594$.
+
+\begin{example}
+  \label{ex:ch05-spam}
+  In a mailbox, $30\%$ of emails are spam. The word ``free'' appears in
+  $40\%$ of spam emails and in $5\%$ of legitimate ones. A new email
+  contains ``free''. With hypotheses spam and not spam,
+  \[
+    P(\text{spam} \mid \text{free})
+    = \frac{0.40 \times 0.30}{0.40 \times 0.30 + 0.05 \times 0.70}
+    = \frac{0.120}{0.155} \approx 0.77 .
+  \]
+  One word moves the probability of spam from $30\%$ to $77\%$. The
+  likelihood ratio, $0.40/0.05 = 8$, measures how strongly the word
+  points to spam, and it is large enough to overturn a prior that
+  favored legitimate mail.
+\end{example}
+
+\begin{example}
+  \label{ex:ch05-coins}
+  A bag holds three coins: a fair one, with probability of heads $\theta
+  = 0.5$; one biased toward heads, $\theta = 0.8$; and one biased toward
+  tails, $\theta = 0.2$. We draw a coin at random, so each has prior
+  probability $1/3$, flip it three times, and see three heads. Which coin
+  is it? The flips are independent given the coin, so the likelihood of
+  three heads is $\theta^3$: $0.125$, $0.512$, and $0.008$. By
+  \cref{eq:ch05-bayes-prop}, the posterior is proportional to $\frac13
+  \theta^3$. The evidence is $\frac13(0.125 + 0.512 + 0.008) = 0.215$,
+  and dividing by it gives
+  \[
+    P(\theta = 0.5 \mid \text{HHH}) \approx 0.194, \quad
+    P(\theta = 0.8 \mid \text{HHH}) \approx 0.794, \quad
+    P(\theta = 0.2 \mid \text{HHH}) \approx 0.012 .
+  \]
+  The data have taught us something about an unknown parameter, $\theta$,
+  in the form of a full distribution over its possible values, not just
+  a single guess. The most probable value, $\theta = 0.8$, is the
+  \emph{maximum a posteriori} (MAP) estimate. \Cref{chap:ch06} develops
+  this idea for parameters that can take a continuum of values.
+\end{example}
+
+\paragraph{Bayes' rule for random variables.}
+Everything above applies to random variables, since statements such as
+$\{X = x\}$ are events. For discrete $X$ and $Y$, the \emph{conditional
+PMF} of $X$ given $Y = y$ is $p(x \mid y) = p(x, y)/p(y)$, where $p(x, y)
+= P(X = x, Y = y)$ is the \emph{joint} PMF, and Bayes' rule reads
+\[
+  p(x \mid y) = \frac{p(y \mid x)\, p(x)}{\sum_{x'} p(y \mid x')\, p(x')} .
+\]
+For continuous variables the same formulas hold with densities in place
+of probabilities and the sum replaced by an integral. In the setting of
+\Cref{ex:ch05-coins}, with $\theta$ allowed to be any number in $[0, 1]$
+and the data written $\mathcal{D}$,
+\[
+  p(\theta \mid \mathcal{D})
+  = \frac{p(\mathcal{D} \mid \theta)\, p(\theta)}
+         {\int p(\mathcal{D} \mid \theta')\, p(\theta')\, d\theta'} .
+\]
+This is the form in which Bayes' rule enters machine learning: $\theta$
+is the parameters of a model, $\mathcal{D}$ is the training data, and
+the posterior describes which parameters are plausible after training.
+
+\begin{aibox}
+  Bayes' rule underlies two ways of building a classifier. A
+  \emph{discriminative} model, such as logistic regression or a neural
+  network with a softmax output, learns the posterior $p(y \mid
+  \vect{x})$ of the class $y$ given the input $\vect{x}$ directly. A
+  \emph{generative} model learns the class prior $p(y)$ and the
+  likelihood $p(\vect{x} \mid y)$ of inputs within each class, and
+  classifies with Bayes' rule, $p(y \mid \vect{x}) \propto p(\vect{x}
+  \mid y)\, p(y)$. The \emph{naive Bayes} spam filter is the classic
+  example. It extends \Cref{ex:ch05-spam} to many words by assuming the
+  words are independent \emph{given} the class, so that $p(\vect{x}
+  \mid y)$ is a product of one factor per word.
+
+  The prior matters in practice too. A fraud detector trained on data
+  with equal numbers of fraudulent and legitimate transactions has
+  learned posteriors for a prior of $50\%$ fraud. If the true rate is
+  $0.1\%$, its probabilities are far too high, for the same reason a
+  positive test of a rare disease is usually a false alarm. Multiplying
+  each class probability by the ratio of true to training prior, and
+  renormalizing, corrects them.
+\end{aibox}
+
+\subsection{In Code: Conditioning and Updating}
+\label{sec:ch05-bayes-code}
+
+On simulated data, conditioning on $B$ means keeping only the samples
+where $B$ happened. With NumPy, that is indexing with a Boolean mask.
+For the dice of \Cref{fig:ch05-conditional}:
+
+\begin{lstlisting}
+import numpy as np
+
+rng = np.random.default_rng(0)
+rolls = rng.integers(1, 7, size=(100_000, 2))
+S = rolls.sum(axis=1)
+A = S >= 10                   # boolean mask, one entry per roll
+B = rolls[:, 0] >= 5
+
+A.mean()                      # 0.166 = P(A), exact 1/6
+A[B].mean()                   # 0.413 = P(A | B), exact 5/12
+B[A].mean()                   # 0.831 = P(B | A), exact 5/6
+\end{lstlisting}
+
+\texttt{A[B]} keeps the entries of \texttt{A} for the rolls in which
+$B$ happened, which is the shrinking of the sample space in code, and
+its mean is the fraction of those rolls in which $A$ happened as well.
+Simulating a million patients reproduces \Cref{ex:ch05-disease}
+without any formula:
+
+\begin{lstlisting}
+n = 1_000_000
+sick = rng.random(n) < 0.01
+positive = np.where(sick, rng.random(n) < 0.99,   # test on sick people
+                          rng.random(n) < 0.05)   # test on healthy people
+positive.mean()               # 0.059 = P(+)
+sick[positive].mean()         # 0.166 = P(D | +), exact 1/6
+\end{lstlisting}
+
+With exact numbers, Bayes' rule over a list of hypotheses is three lines:
+multiply prior by likelihood, then divide by the sum, as in
+\cref{eq:ch05-bayes-prop}. Feeding the posterior back in as the next
+prior performs sequential updating:
+
+\begin{lstlisting}
+def bayes(prior, likelihood):
+    joint = prior * likelihood          # P(B | A_k) P(A_k) for every k
+    return joint / joint.sum()          # divide by the evidence P(B)
+
+prior = np.array([0.01, 0.99])          # sick, healthy
+lik_pos = np.array([0.99, 0.05])        # P(+ | sick), P(+ | healthy)
+post = bayes(prior, lik_pos)            # [0.167 0.833]
+bayes(post, lik_pos)                    # [0.798 0.202]: second positive
+
+theta = np.array([0.5, 0.8, 0.2])       # the three coins
+p = np.ones(3) / 3
+for heads in [1, 1, 1]:
+    p = bayes(p, theta if heads else 1 - theta)
+p                                       # [0.194 0.794 0.012]
+\end{lstlisting}
+
+Updating flip by flip gives the same posterior as using all three flips
+at once in \Cref{ex:ch05-coins}, because the flips are independent given
+the coin: multiplying in the likelihoods one at a time or all together
+gives the same product.
+
+\begin{tip}
+  With many observations, the product of likelihoods quickly becomes
+  smaller than the smallest number a computer can store, and the
+  posterior turns into \texttt{0/0}. Work with logarithms instead: add
+  log-likelihoods to the log-prior, subtract the largest entry, and only
+  then exponentiate and normalize. This is the same trick that keeps the
+  softmax stable.
+\end{tip}
+
+\section{Summary}
+\label{sec:ch05-summary}
+
+\begin{itemize}
+  \item A \emph{random variable} is a function that assigns a number to
+    each outcome of an experiment. Its \emph{distribution} says how
+    likely each value is, and once we have it the sample space can
+    usually be forgotten.
+  \item A \emph{discrete} random variable has a PMF, $p(x) = P(X = x)$,
+    whose values add up to $1$. A \emph{continuous} one has a density,
+    whose integral over an interval is the probability of that interval.
+    A density is a rate, not a probability, and can exceed $1$; every
+    single value has probability $0$.
+  \item The CDF $F(x) = P(X \le x)$ describes both kinds: a staircase for
+    discrete variables, a smooth curve for continuous ones, whose slope
+    is the density. Inverting it turns uniform random numbers into
+    samples of any distribution.
+  \item The \emph{mean} is the probability-weighted average of the values
+    and the \emph{variance} the mean squared distance from it. Under $X
+    \mapsto aX + b$, the mean becomes $a\E[X] + b$ and the variance
+    $a^2 \operatorname{Var}(X)$.
+  \item A few families cover most needs: Bernoulli for yes-or-no
+    outcomes, binomial for counts of successes, categorical (with one-hot
+    labels) for $K$ classes, uniform for no preference, exponential for
+    waiting times, and the Gaussian for quantities that vary around a
+    typical value. \Cref{tab:ch05-distributions} lists their formulas.
+  \item Every Gaussian is $\mu + \sigma Z$ for a standard normal $Z$, so
+    about $68\%$, $95\%$, and $99.7\%$ of its probability lie within one,
+    two, and three standard deviations of the mean. By the central limit
+    theorem, sums of many small independent effects are approximately
+    Gaussian.
+  \item The multivariate Gaussian $\mathcal{N}(\vect{\mu}, \Sigma)$ has
+    elliptical contours whose axes are the eigenvectors of $\Sigma$. It
+    is sampled as $\vect{\mu} + L\vect{z}$ with $LL^\top = \Sigma$, the
+    multivariate form of the reparameterization trick.
+  \item The \emph{conditional probability} $P(A \mid B) = P(A \cap
+    B)/P(B)$ restricts the sample space to $B$ and rescales. It gives the
+    product rule and the chain rule, which factors a sentence's
+    probability into one next-token prediction per word. In general,
+    $P(A \mid B) \ne P(B \mid A)$.
+  \item The \emph{law of total probability} computes $P(A) = \sum_k P(A
+    \mid B_k)\,P(B_k)$ by splitting into cases. Events are
+    \emph{independent} when $P(A \cap B) = P(A)\,P(B)$, that is, when
+    learning one does not change the probability of the other.
+  \item \emph{Bayes' rule}, $P(A \mid B) = P(B \mid A)\,P(A)/P(B)$, follows
+    from writing $P(A \cap B)$ in two ways. Posterior is proportional to
+    likelihood times prior: a hypothesis becomes probable only if it was
+    plausible to begin with and explains the evidence well. Ignoring the
+    prior, as when reading a positive test for a rare disease, is the
+    base rate fallacy.
+  \item The posterior after one observation is the prior for the next.
+    Applied to model parameters, $p(\theta \mid \mathcal{D}) \propto
+    p(\mathcal{D} \mid \theta)\,p(\theta)$ leads to MAP estimation in
+    \Cref{chap:ch06}. In code, condition by masking samples, and multiply
+    many likelihoods in log space.
+\end{itemize}
+
+Deisenroth, Faisal, and Ong~\cite{deisenroth2020mml} cover the
+probability needed for machine learning in more depth, and Goodfellow,
+Bengio, and Courville~\cite{goodfellow2016deep} give a concise review
+aimed at deep learning.

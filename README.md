@@ -24,7 +24,7 @@ make clean  # remove build artifacts
 
 **Part III: Probability and Statistics**
 5. Probability Fundamentals
-6. Statistics and Estimation: MLE and MAP
+6. Statistics and Estimation
 7. Information Theory: Entropy, Cross-Entropy, and KL Divergence
 
 **Part IV: Optimization and Learning**

@@ -1,9 +1,143 @@
 \chapter{Preface}
 
-This book covers the mathematics behind modern machine learning and explains each idea through working code. Every chapter connects the notation and intuition to a specific place where the idea is used in real AI systems.
+This book covers the mathematics behind modern machine learning and
+explains each idea through working code. Every chapter connects the
+notation and intuition to a specific place where the idea is used in real
+AI systems.
+
+It is written for software engineers who want to work in AI. You may
+already call a model through an API, fine-tune one with a library, or
+read the code of a training loop, and keep running into the same wall:
+the papers, the documentation, and the error messages assume a language
+you were never taught or have long forgotten. A loss is ``the negative
+log-likelihood''; an initialization ``preserves the variance''; a layer
+is ``low rank''; an optimizer ``adapts to the curvature''. Each of these
+phrases is a small piece of mathematics, and each one is easy once
+someone shows you what it means and why it is there.
+
+That is the job of this book. It collects the mathematics an AI engineer
+actually needs, and only that, and explains it the way engineers like
+to learn: with concrete examples, numbers you can check, and code you
+can run.
+
+\section*{Who This Book Is For}
+
+The intended reader writes software for a living and wants to
+understand the models they build, train, or deploy well enough to
+reason about them: to read a paper without skipping the equations, to
+see why training diverged, to choose a loss function or a learning rate
+on purpose rather than by copying it. Machine learning engineers moving
+deeper into the field, backend and data engineers moving into AI, and
+students who learned the mathematics once and want to see what it is
+for, should all find the level right.
+
+You do not need to be good at mathematics. You do need to be willing to
+read a formula slowly, work through a small example by hand, and run
+the code that goes with it.
+
+\section*{What This Book Is Not}
+
+This is not a mathematics textbook, and it does not teach mathematics
+from the beginning. There are excellent books that build calculus,
+linear algebra, and probability from first principles, with every
+theorem proved and every special case covered. This book makes a
+different trade. It selects the ideas that keep reappearing in machine
+learning (convexity, gradients, matrices and their decompositions,
+probability distributions, likelihood, entropy, and optimization) and
+develops each one only as far as AI needs it.
+
+In practice, that means:
+\begin{itemize}
+  \item \emph{Intuition before rigor.} Definitions are stated precisely,
+    but they come after a picture or an example that shows why we
+    want them. Proofs appear only when they are short and they explain
+    something; otherwise we state the result and show it at work.
+  \item \emph{Every topic earns its place.} If an idea does not lead
+    somewhere in machine learning, it is not here. When a section
+    introduces something, it says where it will be used.
+  \item \emph{Examples you can check.} Worked examples use small numbers,
+    so that you can follow the arithmetic by hand, and the code then
+    confirms it.
+\end{itemize}
+It is also not a machine learning book. It does not survey models or
+teach a framework. Models appear as the places where the mathematics
+shows up: logistic regression for derivatives and likelihood, PCA for
+eigenvectors, language models for conditional probability, and,
+in the final chapter, the transformer for nearly everything at once.
 
 \section*{How to Read This Book}
 
+The book has four parts, and later chapters build on earlier ones.
+\begin{itemize}
+  \item \emph{Part I, Functions and Derivatives} (\Cref{chap:ch01,chap:ch02}),
+    introduces the functions that appear throughout AI, what makes a
+    function convex and why that makes it easy to minimize, and the
+    derivatives and gradients that tell an optimizer which way is
+    downhill.
+  \item \emph{Part II, Linear Algebra} (\Cref{chap:ch03,chap:ch04}), treats
+    vectors and matrices as the data and the transformations of a model,
+    and the eigenvalue and singular value decompositions behind PCA,
+    compression, and low-rank fine-tuning.
+  \item \emph{Part III, Probability and Statistics}
+    (\Cref{chap:ch05,chap:ch06,chap:ch07}), gives the language of
+    uncertainty: random variables, distributions, Bayes' rule,
+    and the estimation principles from which loss functions are
+    derived, followed by entropy, cross-entropy, and KL divergence.
+  \item \emph{Part IV, Optimization and Learning}
+    (\Cref{chap:ch08,chap:ch09,chap:ch10}), turns to training: the
+    optimizers from gradient descent to Adam, regularization and
+    generalization, and finally the mathematics of the transformer,
+    which uses every earlier chapter.
+\end{itemize}
+Read the parts in order if the material is new to you. If you are
+comfortable with some of it, skim those chapters' summaries, which end
+every chapter, and go back only when a later chapter refers to something
+unfamiliar. Cross-references point to the exact section where each idea
+was introduced.
+
+Within each chapter, the main text explains an idea, and a few kinds of
+boxes set off material with a particular purpose:
+\begin{itemize}
+  \item \emph{In AI} boxes show where the idea is used in real systems,
+    such as an initialization scheme, a loss function, or a part of a
+    language model. If you read nothing else, read these.
+  \item \emph{Note} boxes add context or clarify a convention.
+  \item \emph{Tip} boxes give practical advice.
+  \item \emph{Warning} boxes point out common mistakes, especially
+    silent ones in code, such as a library that expects a standard
+    deviation where you passed a variance.
+\end{itemize}
+Most sections end with an \emph{In Code} subsection that turns the
+mathematics into running code, and every chapter ends with a summary of
+its main points.
+
 \section*{Prerequisites}
 
+You should be comfortable programming in Python and with high school
+algebra: manipulating equations, working with exponents and logarithms,
+and reading function notation such as $f(x)$. Some earlier exposure to
+calculus, the idea of a derivative or an integral as an area, makes the
+first chapters faster, but the book reviews what it uses. No linear
+algebra, probability, or statistics is assumed; each is built up from
+the start to the level that machine learning requires. No prior
+knowledge of machine learning is needed either, although readers who
+have trained a model will recognize more of the examples.
+
 \section*{Code}
+
+The code is in Python and relies on a small, standard set of libraries:
+NumPy for arrays and linear algebra, SciPy for probability distributions
+and optimization, and, in a few places, scikit-learn and PyTorch, to
+show that the library functions you already use compute exactly what
+the mathematics says.
+
+The listings are short and meant to be typed or pasted into a Python
+session or a notebook and run as you read. Most of them check a result
+from the text: they compute a formula, simulate an experiment many times
+and compare the frequencies with the predicted probabilities, or
+recover known parameters from generated data. Comments show the output
+you should see, rounded. Random examples fix a seed, so your numbers
+should match; if a library version changes the last digit, the point of
+the example still stands. Treat the code as a laboratory: change the
+numbers, break the assumptions, and see what happens. That is the
+fastest way to make the mathematics your own.
