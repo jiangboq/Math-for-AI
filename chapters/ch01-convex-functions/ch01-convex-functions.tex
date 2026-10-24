@@ -8,200 +8,44 @@
 \section{Why Convexity Matters for AI}
 \label{sec:ch01-why}
 
+In Machine learning, training a model means minimizing a \emph{loss} $L(\vect{\theta})$, a
+single number that measures how badly the model with parameters
+$\vect{\theta} \in \R^d$ fits the data. The graph of $L$ is often called
+the \emph{loss landscape}: a surface over parameter space whose valleys
+are good models. Gradient descent explores this landscape the way a hiker
+in fog would, by feeling the slope underfoot and stepping downhill. That
+strategy uses only local information, so in general it can stop at the
+bottom of a small dip with a much deeper valley out of sight, and where it
+stops depends on where it started. Convex functions are exactly the ones
+for which this cannot happen. A convex landscape is a single bowl with no
+false bottoms: every local minimum is a global minimum, any point where
+the slope is zero is optimal, and gradient descent reaches the best model
+from any starting point. For convex problems we can prove how fast
+training converges, certify that an answer is optimal, and expect the same
+result on every run.
+
+Deep networks give up this guarantee. Their losses are not convex in the
+weights, and their landscapes contain saddle points, plateaus, and many
+distinct minima. Convexity still matters for them, in three ways. First,
+the losses themselves, such as squared error and cross-entropy, are convex
+in the model's \emph{outputs}; the nonconvexity comes from the network that
+produces those outputs, and seeing this split tells us where the
+difficulty lies. Second, near a good minimum a smooth loss looks like a
+convex bowl, so convex analysis explains how training behaves in its final
+phase and guides choices such as the learning rate. Third, many standard
+techniques, including careful initialization, momentum, adaptive step
+sizes, and normalization layers, can be understood as ways of making a
+nonconvex landscape behave more like a convex one. Convex functions are
+the benchmark against which every harder problem is measured, and this
+chapter builds the intuition for recognizing them.
+
 \begin{aibox}
   Linear regression, logistic regression, and SVMs~\cite{cortes1995svm}
   have convex losses, so gradient descent finds the global minimum. Deep networks do not, and much
   of modern training practice exists to work around that.
 \end{aibox}
 
-\section{Functions: A Quick Refresher}
-\label{sec:ch01-functions}
-\subsection{Domain, Range, and Graphs}
-\label{sec:ch01-domain-range}
-
-A \emph{function} is a rule that assigns to each input exactly one output.
-We write
-\[
-  f\colon A \to B
-\]
-to say that $f$ takes inputs from the set $A$ and produces outputs in the
-set $B$. For example, $f\colon \R \to \R$, $f(x) = x^2$ takes any real
-number and returns its square. The phrase ``exactly one'' matters: a rule
-that could return two different values for the same input is not a
-function.
-
-\begin{definition}[Domain and range]
-  \label{def:domain-range}
-  Let $f\colon A \to B$.
-  \begin{itemize}
-    \item The \emph{domain} of $f$, written $\dom f$, is the set $A$ of
-      allowed inputs.
-    \item The \emph{range} (or \emph{image}) of $f$ is the set of outputs
-      that actually occur:
-      \[
-        \operatorname{range} f = \{\, f(x) : x \in \dom f \,\}.
-      \]
-  \end{itemize}
-\end{definition}
-
-The range can be smaller than the set $B$ we wrote down. For
-$f(x) = x^2$ on $\R$, every real number is an allowed input, but the range
-is only $[0, \infty)$, because no real number squares to a negative value.
-
-When a function is given by a formula with no domain stated, we take its
-\emph{natural domain}: the largest set of inputs on which the formula makes
-sense. The natural domain of $\log x$ is $(0, \infty)$, that of $\sqrt{x}$
-is $[0, \infty)$, and that of $1/x$ is $\R \setminus \{0\}$.
-\Cref{tab:ch01-domain-range} lists the domain and range of several
-functions that come up repeatedly in this book.
-
-\begin{table}[ht]
-  \centering
-  \caption{Domains and ranges of some common functions.}
-  \label{tab:ch01-domain-range}
-  \begin{tabular}{@{}lll@{}}
-    \toprule
-    Function & Domain & Range \\
-    \midrule
-    $x^2$ & $\R$ & $[0, \infty)$ \\
-    $e^x$ & $\R$ & $(0, \infty)$ \\
-    $\log x$ & $(0, \infty)$ & $\R$ \\
-    $\sigma(x) = 1/(1 + e^{-x})$ (sigmoid) & $\R$ & $(0, 1)$ \\
-    $\tanh x$ & $\R$ & $(-1, 1)$ \\
-    $\max(0, x)$ (ReLU) & $\R$ & $[0, \infty)$ \\
-    \bottomrule
-  \end{tabular}
-\end{table}
-
-Notice that $e^x$ and $\log x$ swap domain and range. This is no accident:
-each undoes the other, so the outputs of one are exactly the allowed inputs
-of the other.
-
-\begin{aibox}
-  Domains and ranges are design decisions in machine learning. A binary
-  classifier ends in a sigmoid because its range $(0,1)$ is exactly where
-  probabilities live. The cross-entropy loss $-\log p$ is defined only for
-  $p > 0$, so a model that assigns probability $0$ to the correct label
-  produces an infinite loss. This is why frameworks compute the loss from
-  the raw scores (logits) rather than from probabilities.
-\end{aibox}
-
-The last point is easy to see in code. In exact arithmetic the sigmoid
-never reaches $0$ or $1$, but floating-point numbers have limited
-precision, so for large inputs it rounds to the endpoints, and the
-logarithm then receives an input outside its domain:
-
-\begin{lstlisting}
-import numpy as np
-
-def sigmoid(x):
-    return 1 / (1 + np.exp(-x))
-
-sigmoid(np.array([-800.0, 0.0, 40.0]))  # array([0. , 0.5, 1. ])
-np.log(sigmoid(-800.0))                 # -inf
-np.log(-1.0)                            # nan
-\end{lstlisting}
-
-\paragraph{Functions of several variables.}
-Inputs need not be single numbers. A function $f\colon \R^n \to \R$ takes a
-vector $\vect{x} = (x_1, \dots, x_n)$ and returns a number, for example
-\[
-  f(\vect{x}) = x_1^2 + x_2^2 + \dots + x_n^2.
-\]
-The most important function in machine learning has this form: the
-\emph{loss} $L\colon \R^d \to \R$, which maps a vector of model parameters
-$\vect{\theta}$ to a single number measuring how badly the model fits the
-data. Training a model means searching the domain $\R^d$ for a point where
-$L$ is small, and for a large neural network $d$ is in the billions.
-
-Domains of vector functions can be restricted too. A probability
-distribution over $n$ outcomes is a vector in the \emph{probability simplex}
-\[
-  \Delta_n = \Bigl\{\, \vect{p} \in \R^n : p_i \ge 0 \text{ for all } i,\
-  \textstyle\sum_{i=1}^n p_i = 1 \,\Bigr\},
-\]
-so functions of distributions, such as entropy, have $\Delta_n$ as their
-domain. Likewise, the softmax function, which turns a vector of logits into
-probabilities, has domain $\R^n$ and range inside $\Delta_n$.
-
-\paragraph{Graphs.}
-The \emph{graph} of a function collects every input together with its
-output:
-\[
-  \operatorname{graph} f = \{\, (x, f(x)) : x \in \dom f \,\}.
-\]
-For $f\colon \R \to \R$, the graph is a curve in the plane. The domain is
-the part of the horizontal axis the curve sits over, and the range is the
-part of the vertical axis it covers. Because each input has exactly one
-output, every vertical line meets the graph at most once.
-\Cref{fig:ch01-graphs} shows three examples.
-
-\begin{figure}[ht]
-  \centering
-  \begin{tikzpicture}
-    \begin{axis}[
-      name=sig, width=0.36\textwidth, height=0.32\textwidth,
-      axis lines=middle, xmin=-6, xmax=6, ymin=-0.3, ymax=1.4,
-      axis on top, xtick={-4,4}, ytick={1},
-      xlabel={$x$}, ylabel={$\sigma(x)$},
-      x label style={anchor=west}, y label style={anchor=south},
-      title style={yshift=2ex}, title={(a) sigmoid},
-    ]
-      \fill[blue!10] (axis cs:-6,0) rectangle (axis cs:6,1);
-      \addplot[dashed, gray, domain=-6:6] {1};
-      \addplot[very thick, blue!60!black, domain=-6:6, samples=100]
-        {1/(1+exp(-x))};
-    \end{axis}
-    \begin{axis}[
-      name=log, at={(sig.east)}, anchor=west, xshift=0.6cm,
-      width=0.36\textwidth, height=0.32\textwidth,
-      axis lines=middle, xmin=-1, xmax=4, ymin=-3, ymax=2,
-      axis on top, xtick={1,2,3}, ytick={-2,2},
-      xlabel={$x$}, ylabel={$\log x$},
-      x label style={anchor=west}, y label style={anchor=south},
-      title style={yshift=2ex}, title={(b) logarithm},
-    ]
-      \fill[red!10] (axis cs:0,-3) rectangle (axis cs:4,2);
-      \addplot[very thick, red!60!black, domain=0.05:4, samples=100]
-        {ln(x)};
-    \end{axis}
-    \begin{axis}[
-      at={(log.east)}, anchor=west, xshift=0.6cm,
-      width=0.36\textwidth, height=0.32\textwidth,
-      view={35}{30}, xlabel={$x_1$}, ylabel={$x_2$}, zlabel={$f$},
-      xtick=\empty, ytick=\empty, ztick=\empty,
-      title style={yshift=2ex}, title={(c) $x_1^2 + x_2^2$},
-    ]
-      \addplot3[surf, shader=interp, colormap/viridis,
-        domain=-2:2, y domain=-2:2, samples=25] {x^2 + y^2};
-    \end{axis}
-  \end{tikzpicture}
-  \caption{Graphs of three functions. (a) The sigmoid is defined on all of
-    $\R$, but its graph stays inside the shaded band $0 < y < 1$: its range
-    is $(0,1)$. (b) The logarithm's graph sits only over the shaded region
-    $x > 0$: its domain is $(0, \infty)$. (c) The graph of a function of two
-    variables is a surface in $\R^3$; this one is a bowl.}
-  \label{fig:ch01-graphs}
-\end{figure}
-
-For $f\colon \R^2 \to \R$, the graph is a surface in three dimensions, like
-the bowl in \Cref{fig:ch01-graphs}(c). For $f\colon \R^n \to \R$ with
-$n > 2$, the graph lives in $\R^{n+1}$ and can no longer be drawn, but the
-picture still guides intuition. When people speak of the \emph{loss
-landscape} of a neural network, they mean the graph of its loss function:
-a surface over parameter space whose valleys are good models. Much of this
-chapter is about which shapes of landscape make the lowest valley easy to
-find.
-
-\begin{remark}
-  The definition of convexity (\Cref{def:convex}) places a condition on the
-  domain itself: $\dom f$ must be a \emph{convex set}, meaning that it
-  contains the straight line segment between any two of its points. On the
-  real line, the convex sets are the intervals. Domains, in other words, are not
-  bookkeeping; they are part of what makes a function convex or not.
-\end{remark}
-
-\subsection{Functions You Will See Everywhere in AI}
+\section{Functions You Will See Everywhere in AI}
 \label{sec:ch01-ai-functions}
 
 A neural network is assembled from a small number of building blocks.
@@ -361,7 +205,12 @@ into a probability distribution. The \emph{softmax} does this:
 \]
 Exponentiating makes every entry positive, and dividing by the sum makes
 the entries add up to $1$. The softmax is therefore a function from $\R^n$
-into the probability simplex $\Delta_n$ of \Cref{sec:ch01-domain-range}.
+into the \emph{probability simplex}
+\[
+  \Delta_n = \Bigl\{\, \vect{p} \in \R^n : p_i \ge 0 \text{ for all } i,\
+  \textstyle\sum_{i=1}^n p_i = 1 \,\Bigr\},
+\]
+the set of all probability distributions over $n$ outcomes.
 Its outputs are never exactly $0$, so its range is the part of $\Delta_n$
 where every $p_i > 0$. Larger logits get larger probabilities, and the
 ordering of the classes is preserved.
@@ -489,8 +338,11 @@ two outputs. So the definition says:
 \begin{center}
   \emph{$f$ of an average is at most the average of $f$.}
 \end{center}
-The requirement that $\dom f$ be convex guarantees that the averaged input
-is still in the domain, so the left side makes sense. The definition reads
+Here $\dom f$ denotes the \emph{domain} of $f$, its set of allowed inputs,
+and a set is \emph{convex} if it contains the straight line segment
+between any two of its points; on the real line, the convex sets are the
+intervals. The requirement that $\dom f$ be convex guarantees that the
+averaged input is still in the domain, so the left side makes sense. The definition reads
 the same for $f\colon \R^n \to \R$, with $x$ and $y$ vectors; loss
 functions of many parameters are judged by exactly this inequality.
 
@@ -558,8 +410,8 @@ $y$, and $\theta$. The following examples prove it in general.
   $f(x) = x^3$, $x = -2$, $y = 0$, and $\theta = \tfrac12$. The left side is
   $f(-1) = -1$, and the right side is $\tfrac12(-8 + 0) = -4$. Since
   $-1 > -4$, inequality~\eqref{eq:convex} fails. Restricted to the domain
-  $[0, \infty)$, however, $x^3$ is convex; as the remark in
-  \Cref{sec:ch01-domain-range} warned, the domain is part of the question.
+  $[0, \infty)$, however, $x^3$ is convex; the domain is part of the
+  question.
 \end{example}
 
 \begin{figure}[ht]
@@ -823,104 +675,6 @@ The log-likelihood of logistic regression is concave in the weights, and
 training maximizes it; in practice, libraries minimize its negative, the
 cross-entropy loss, which is convex.
 
-\subsection{The Epigraph View}
-\label{sec:ch01-epigraph}
-
-There is a second way to see convexity, which turns a statement about a
-function into a statement about a set.
-
-\begin{definition}[Epigraph]
-  \label{def:epigraph}
-  The \emph{epigraph} of $f\colon \dom f \to \R$ is the set of points on or
-  above its graph:
-  \[
-    \epi f = \{\, (x, t) : x \in \dom f,\ t \ge f(x) \,\}.
-  \]
-\end{definition}
-
-For $f\colon \R \to \R$, the epigraph is a region of the plane: the graph
-together with everything above it (\Cref{fig:ch01-epigraph}). For
-$f\colon \R^n \to \R$, it is a region of $\R^{n+1}$.
-
-\begin{proposition}
-  \label{prop:ch01-epigraph}
-  A function $f$ is convex if and only if $\epi f$ is a convex set.
-\end{proposition}
-
-\begin{proof}
-  Suppose $f$ is convex, and take two points $(x, s)$ and $(y, t)$ of
-  $\epi f$, so that $s \ge f(x)$ and $t \ge f(y)$. For $\theta \in [0, 1]$,
-  \[
-    \theta s + (1 - \theta) t
-    \ge \theta f(x) + (1 - \theta) f(y)
-    \ge f\bigl(\theta x + (1 - \theta) y\bigr),
-  \]
-  so the point $\theta (x, s) + (1 - \theta)(y, t)$ is in $\epi f$.
-  Conversely, if $\epi f$ is convex, apply its convexity to the points
-  $(x, f(x))$ and $(y, f(y))$, which lie in $\epi f$. Their weighted
-  average $\bigl(\theta x + (1 - \theta) y,\ \theta f(x) + (1 - \theta)
-  f(y)\bigr)$ is in $\epi f$, which says exactly
-  that~\eqref{eq:convex} holds.
-\end{proof}
-
-In the chord picture, a segment between two points of the epigraph is a
-chord lifted upward, and it stays in the epigraph precisely when chords
-stay above the graph. \Cref{fig:ch01-epigraph}(b) shows how $x^3$ fails:
-its epigraph has a dent, and a segment between two of its points passes
-outside.
-
-\begin{figure}[ht]
-  \centering
-  \begin{tikzpicture}
-    \pgfplotsset{
-      ep/.style={
-        width=0.42\textwidth, height=0.36\textwidth,
-        axis lines=middle, axis on top,
-        xlabel={$x$}, ylabel={$t$},
-        x label style={anchor=west}, y label style={anchor=south},
-        title style={yshift=1.5ex},
-        tick label style={font=\footnotesize},
-        yticklabel style={fill=white, inner sep=1pt},
-      },
-    }
-    \begin{axis}[ep, name=epa, xmin=-2.2, xmax=2.2, ymin=-0.8, ymax=4.5,
-        xtick={-1,1}, ytick={1,3}, title={(a) $\epi x^2$: convex}]
-      \addplot[draw=none, fill=blue!10, domain=-2:2, samples=60] {x^2}
-        -- (axis cs:2,4.5) -- (axis cs:-2,4.5) -- cycle;
-      \addplot[very thick, blue!60!black, domain=-2:2, samples=60] {x^2};
-      \addplot[thick, orange!85!black] coordinates {(-1.5,3) (1,1.5)};
-      \addplot[orange!85!black, mark=*, mark size=1.8pt, only marks]
-        coordinates {(-1.5,3) (1,1.5)};
-    \end{axis}
-    \begin{axis}[ep, at={(epa.east)}, anchor=west, xshift=1.2cm,
-        xmin=-2.3, xmax=2, ymin=-9, ymax=4.5,
-        xtick={-2,-1,1}, ytick={-8,-4,4}, title={(b) $\epi x^3$: not convex}]
-      \addplot[draw=none, fill=red!10, domain=-2.1:1.6, samples=60] {x^3}
-        -- (axis cs:1.6,4.5) -- (axis cs:-2.1,4.5) -- cycle;
-      \addplot[very thick, blue!60!black, domain=-2.1:1.6, samples=60] {x^3};
-      \addplot[thick, red!70!black] coordinates {(-2,-8) (0,0)};
-      \addplot[red!70!black, mark=*, mark size=1.8pt, only marks]
-        coordinates {(-2,-8) (0,0)};
-      \draw[red!70!black, fill=white] (axis cs:-1,-4) circle (2pt);
-    \end{axis}
-  \end{tikzpicture}
-  \caption{Epigraphs (shaded). (a) The epigraph of $x^2$ is a convex set:
-    the segment between any two of its points stays inside. (b) The
-    epigraph of $x^3$ is not: the segment from $(-2, -8)$ to $(0, 0)$
-    passes through $(-1, -4)$ (open dot), which lies below the graph.}
-  \label{fig:ch01-epigraph}
-\end{figure}
-
-The epigraph view makes some facts almost free. A point lies above the
-graph of $\max(f, g)$ exactly when it lies above both graphs, so
-\[
-  \epi \max(f, g) = \epi f \cap \epi g.
-\]
-If two sets each contain the segment between any two of their points, so
-does their intersection. Hence the maximum of two convex functions is
-convex. Taking $f(x) = 0$ and $g(x) = x$, both affine, shows once more that
-$\operatorname{ReLU}(x) = \max(0, x)$ is convex.
-
 \subsection{Why Convex Problems Are Easy: Local Minima Are Global}
 \label{sec:ch01-local-global}
 
@@ -1091,9 +845,6 @@ runs end in the worse valley.
     and graph that grows with distance; adding an $L_2$ penalty creates it.
   \item A function is \emph{concave} if $-f$ is convex. Maximizing a
     concave function is the same as minimizing a convex one.
-  \item $f$ is convex exactly when its epigraph is a convex set. Since
-    $\epi \max(f, g) = \epi f \cap \epi g$, the maximum of convex
-    functions, such as ReLU, is convex.
   \item For a convex function, every local minimizer is global. This is why
     convex models train reliably from any starting point, while deep
     networks, whose losses are not convex, do not come with that
