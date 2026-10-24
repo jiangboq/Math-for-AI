@@ -40,9 +40,13 @@ the benchmark against which every harder problem is measured, and this
 chapter builds the intuition for recognizing them.
 
 \begin{aibox}
-  Linear regression, logistic regression, and SVMs~\cite{cortes1995svm}
-  have convex losses, so gradient descent finds the global minimum. Deep networks do not, and much
-  of modern training practice exists to work around that.
+  Linear regression, logistic regression, and support vector machines
+  (SVMs)~\cite{cortes1995svm} lead to convex optimization problems under
+  their standard formulations. For convex objectives, every local minimum
+  is global. With appropriate optimization methods and conditions, we can
+  therefore find globally optimal solutions without worrying about
+  suboptimal local minima. Deep neural networks generally lack this
+  guarantee.
 \end{aibox}
 
 \section{Functions You Will See Everywhere in AI}
@@ -398,10 +402,28 @@ $y$, and $\theta$. The following examples prove it in general.
 
 \begin{example}[Exponential]
   \label{ex:ch01-exp}
-  The function $e^x$ is convex. A direct algebraic proof is awkward, so
-  we only test one case: with $x = 0$, $y = 2$, and $\theta = \tfrac12$, the left
-  side is $e^1 \approx 2.72$ and the right side is $\tfrac12(1 + e^2)
-  \approx 4.19$.
+  Let $f(x) = e^x$. The proof rests on the inequality $e^t \ge 1 + t$ for
+  all real $t$, which follows from $e^t = \lim_{n \to \infty} (1 + t/n)^n$
+  and Bernoulli's inequality $(1 + t/n)^n \ge 1 + t$, valid once
+  $n \ge |t|$. Write $m = \theta x + (1 - \theta) y$ for the averaged
+  input. Then
+  \[
+    e^x = e^m e^{x - m} \ge e^m (1 + x - m)
+    \qquad\text{and}\qquad
+    e^y = e^m e^{y - m} \ge e^m (1 + y - m).
+  \]
+  Multiply the first inequality by $\theta$ and the second by $1 - \theta$;
+  both are nonnegative, so the inequalities are preserved. Adding gives
+  \[
+    \theta e^x + (1 - \theta) e^y
+    \ge e^m \bigl(1 + \theta x + (1 - \theta) y - m\bigr)
+    = e^m
+    = e^{\theta x + (1 - \theta) y},
+  \]
+  since $\theta x + (1 - \theta) y - m = 0$. So $e^x$ is convex. For
+  instance, with $x = 0$, $y = 2$, and $\theta = \tfrac12$, the left side
+  of~\eqref{eq:convex} is $e^1 \approx 2.72$ and the right side is
+  $\tfrac12(1 + e^2) \approx 4.19$.
 \end{example}
 
 \begin{example}[A function that is not convex]
