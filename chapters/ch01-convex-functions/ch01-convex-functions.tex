@@ -153,12 +153,8 @@ Its domain is $\R$ and its range is $(0, 1)$. Large positive inputs give
 outputs close to $1$, large negative inputs give outputs close to $0$, and
 $\sigma(0) = \tfrac12$. The graph in \Cref{fig:ch01-activations}(b) is an
 S-shaped curve that looks like a sign function with the jump smoothed out.
-The two are closely related:
-\[
-  2\sigma(x) - 1 = \tanh\!\left(\frac{x}{2}\right),
-\]
-and as $k \to \infty$, the steeper sigmoid $\sigma(kx)$ approaches a step
-from $0$ to $1$. Another useful property follows directly from the
+The two are closely related: as $k \to \infty$, the steeper sigmoid
+$\sigma(kx)$ approaches a step from $0$ to $1$. Another useful property follows directly from the
 definition:
 \[
   \sigma(-x) = 1 - \sigma(x).
@@ -191,13 +187,57 @@ many layers, and flat regions in each layer combine to stop learning.
 ReLU's flat region on the negative side has the same effect on a single
 unit: a unit whose input is negative for every training example outputs
 $0$ for all of them and stops learning, a failure known as a \emph{dead
-neuron}. Smooth variants such as GELU~\cite{hendrycks2016gelu}, used in most
-transformers, bend the
-corner slightly to reduce this problem.
+neuron}.
+
+The \emph{leaky ReLU}~\cite{maas2013rectifier} fixes this by giving the
+negative side a small slope instead of a flat one:
+\[
+  \operatorname{LeakyReLU}_\alpha(x) = \max(\alpha x, x)
+  = \begin{cases}
+    x & x \ge 0, \\
+    \alpha x & x < 0,
+  \end{cases}
+\]
+where $\alpha$ is a small constant, typically $0.01$.
+\Cref{fig:ch01-leaky-relu} compares it with ReLU for $\alpha = 0.1$. Its range is
+all of $\R$, and its slope is never zero: it is $1$ for positive inputs and
+$\alpha$ for negative ones. A unit whose input is negative still passes a
+small signal back, so it can recover instead of dying. Setting $\alpha = 0$
+gives back the ordinary ReLU. Smooth variants such as
+GELU~\cite{hendrycks2016gelu}, used in most transformers, take a different
+route: they bend the corner slightly and let small negative inputs through.
+
+\begin{figure}[ht]
+  \centering
+  \begin{tikzpicture}
+    \begin{axis}[
+      width=0.5\textwidth, height=0.4\textwidth,
+      axis lines=middle,
+      x label style={anchor=west}, y label style={anchor=south},
+      yticklabel style={fill=white, inner sep=1pt},
+      xmin=-3, xmax=3, ymin=-1, ymax=3.2,
+      xtick={-2,2}, ytick={1,2}, xlabel={$x$},
+      ylabel={$\operatorname{LeakyReLU}_{0.1}(x)$},
+    ]
+      \addplot[thick, dashed, orange!80!black, domain=-3:0] {0};
+      \addplot[very thick, blue!60!black, domain=-3:3, samples=61]
+        {max(0.1*x,x)};
+      \node[anchor=north west, font=\small] at (axis cs:-2.9,-0.45)
+        {slope $\alpha$};
+      \node[anchor=south east, font=\small] at (axis cs:1.9,2)
+        {slope $1$};
+    \end{axis}
+  \end{tikzpicture}
+  \caption{The leaky ReLU with $\alpha = 0.1$ (solid). For negative inputs
+    it keeps a small slope $\alpha$ instead of the flat zero of ReLU
+    (dashed), so its slope is never zero.}
+  \label{fig:ch01-leaky-relu}
+\end{figure}
 
 ReLU is also our first example of a convex function that is not smooth.
 It is convex because it is the maximum of two linear functions, $0$ and
-$x$.
+$x$. For $0 \le \alpha \le 1$, the same argument shows that the leaky ReLU,
+the maximum of $\alpha x$ and $x$, is convex too.
 
 \paragraph{The softmax.}
 A classifier with $n$ classes produces a vector of $n$ logits
