@@ -830,9 +830,10 @@ lowest one, and which valley it reaches depends on the starting point.
 
 For convex functions none of these problems arise. A convex
 differentiable function has no maxima or saddle points to stop at, and by
-\Cref{thm:ch01-local-global} its local minima are global. With a small
-enough step size, gradient descent on a convex function approaches the
-global minimum from any starting point.
+\Cref{thm:ch01-local-global} its local minima are global. For convex 
+differentiable functions, every stationary point is a global minimizer. 
+Under suitable smoothness conditions and with an appropriate step size, 
+gradient descent converges toward a global minimum.
 
 \subsection{In Code: Minimizing Functions}
 \label{sec:ch02-gd-code}
@@ -925,7 +926,7 @@ situation when training neural networks.
   cheap but noisy. This \emph{stochastic gradient descent} and its
   refinements, momentum and Adam, are the optimizers used in practice;
   their details belong to machine learning rather than to this book. The
-  learning rate remains the most important setting to tune, for exactly
+  learning rate remains one of the most important setting to tune, for exactly
   the reasons shown in \Cref{fig:ch02-step-sizes}.
 \end{aibox}
 

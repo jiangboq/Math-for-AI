@@ -1582,12 +1582,39 @@ of derivatives). Flows are designed so that these determinants are cheap,
 for instance by making each layer's matrix triangular, so that the
 determinant is the product of the diagonal.
 
+
 \paragraph{Detecting lost information.}
-A layer whose weight matrix has determinant near zero nearly flattens its
-input, and different inputs become hard to tell apart. In practice,
-the singular values of \Cref{chap:ch04} are a better measure of this than
-the determinant, which, as the next subsection shows, is a poor
-numerical indicator on its own.
+A zero determinant means that a square matrix collapses at least
+one direction completely: distinct inputs can produce the same
+output. A small determinant, however, does not necessarily mean
+that the transformation is close to singular. The determinant
+measures the overall volume scaling, not how much each individual
+direction is stretched or compressed.
+
+For example, consider
+\[
+A = \begin{bmatrix}
+0.001 & 0 \\
+0 & 0.001
+\end{bmatrix},
+\qquad
+B = \begin{bmatrix}
+0.000001 & 0 \\
+0 & 1
+\end{bmatrix}.
+\]
+Both have determinant $10^{-6}$, but their effects are different.
+Matrix $A$ shrinks every direction equally, whereas $B$ nearly
+flattens one direction while leaving the other unchanged.
+
+To understand these differences, we need the
+\emph{singular values} introduced in \Cref{chap:ch04}.
+The smallest singular value measures the least amount of
+stretching, while the condition number measures how unevenly
+the matrix scales different directions. These quantities are
+more informative than the determinant alone when studying
+invertibility and numerical sensitivity.
+
 
 \begin{aibox}
   Libraries and papers almost always work with the \emph{log}-determinant
