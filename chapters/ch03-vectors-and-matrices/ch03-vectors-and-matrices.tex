@@ -702,6 +702,86 @@ rule.
   $\vect{e}_1$ and $\vect{e}_2$ should go and use them as columns.
 \end{tip}
 
+\begin{example}
+  \label{ex:ch03-transform-vector}
+  Let
+  \[
+    A = \begin{bmatrix} 1 & -1 \\ 1 & 1 \end{bmatrix},
+    \qquad
+    \vect{x} = \begin{bmatrix} 2 \\ 1 \end{bmatrix}.
+  \]
+  The columns tell us where the basis vectors go:
+  $A\vect{e}_1 = (1, 1)$ and $A\vect{e}_2 = (-1, 1)$. Since
+  $\vect{x} = 2\vect{e}_1 + \vect{e}_2$, linearity gives
+  \[
+    A\vect{x} = 2 A\vect{e}_1 + A\vect{e}_2
+    = 2 \begin{bmatrix} 1 \\ 1 \end{bmatrix}
+      + \begin{bmatrix} -1 \\ 1 \end{bmatrix}
+    = \begin{bmatrix} 1 \\ 3 \end{bmatrix},
+  \]
+  which matches the row view: $(1 \cdot 2 - 1 \cdot 1,\ 1 \cdot 2 + 1
+  \cdot 1) = (1, 3)$. \Cref{fig:ch03-transform-vector} shows the
+  transformation. The recipe for reaching $\vect{x}$, two steps along
+  $\vect{e}_1$ and one along $\vect{e}_2$, carries over unchanged: $A\vect{x}$
+  is two steps along $A\vect{e}_1$ and one along $A\vect{e}_2$. The grid
+  is carried along with it, so $\vect{x}$ and $A\vect{x}$ sit at the same
+  corner of their grids. This $A$ rotates the plane by $45^\circ$ and
+  stretches it by a factor of $\sqrt{2}$, so $\|A\vect{x}\| =
+  \sqrt{10} = \sqrt{2}\,\|\vect{x}\|$.
+\end{example}
+
+\begin{figure}[ht]
+  \centering
+  \begin{tikzpicture}[scale=0.8, >=stealth]
+    % Before: the standard grid
+    \begin{scope}
+      \draw[gray!30] (-1.5,-0.5) grid (3.5,3.5);
+      \draw[->, gray!70] (-1.5,0) -- (3.6,0);
+      \draw[->, gray!70] (0,-0.5) -- (0,3.6);
+      \draw[->, very thick, blue!60!black] (0,0) -- (1,0)
+        node[below, font=\small] {$\vect{e}_1$};
+      \draw[->, very thick, orange!85!black] (0,0) -- (0,1)
+        node[left, font=\small] {$\vect{e}_2$};
+      \draw[dashed, blue!60!black] (1,0) -- (2,0);
+      \draw[dashed, orange!85!black] (2,0) -- (2,1);
+      \draw[->, very thick, green!45!black] (0,0) -- (2,1)
+        node[above left, font=\small] {$\vect{x} = (2, 1)$};
+      \fill (2,1) circle (1.5pt);
+      \node[font=\small] at (1,-1.2) {before};
+    \end{scope}
+    % The map
+    \draw[->, thick] (4,1.5) -- (5.4,1.5) node[midway, above] {$A$};
+    % After: the transformed grid
+    \begin{scope}[xshift=7.4cm]
+      \begin{scope}
+        \clip (-1.5,-0.5) rectangle (3.5,3.5);
+        \foreach \k in {-4,...,4} {
+          \draw[blue!20] ({\k-4},{\k+4}) -- ({\k+4},{\k-4}) ;
+          \draw[blue!20] ({-\k-4},{\k-4}) -- ({-\k+4},{\k+4});
+        }
+      \end{scope}
+      \draw[->, gray!70] (-1.5,0) -- (3.6,0);
+      \draw[->, gray!70] (0,-0.5) -- (0,3.6);
+      \draw[->, very thick, blue!60!black] (0,0) -- (1,1)
+        node[right, font=\small] {$A\vect{e}_1$};
+      \draw[->, very thick, orange!85!black] (0,0) -- (-1,1)
+        node[left, font=\small] {$A\vect{e}_2$};
+      \draw[dashed, blue!60!black] (1,1) -- (2,2);
+      \draw[dashed, orange!85!black] (2,2) -- (1,3);
+      \draw[->, very thick, green!45!black] (0,0) -- (1,3)
+        node[above right, font=\small] {$A\vect{x} = (1, 3)$};
+      \fill (1,3) circle (1.5pt);
+      \node[font=\small] at (1,-1.2) {after};
+    \end{scope}
+  \end{tikzpicture}
+  \caption{The transformation of \Cref{ex:ch03-transform-vector}. Left:
+    $\vect{x} = 2\vect{e}_1 + \vect{e}_2$ on the standard grid. Right:
+    $A$ sends the grid to a rotated, stretched grid, and
+    $A\vect{x} = 2A\vect{e}_1 + A\vect{e}_2$ follows the same dashed path
+    along the new grid lines.}
+  \label{fig:ch03-transform-vector}
+\end{figure}
+
 Linearity also has a geometric meaning. A linear transformation sends the
 origin to the origin, straight lines to straight lines (or to a single
 point), and evenly spaced grid lines to evenly spaced lines. It may
